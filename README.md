@@ -36,7 +36,7 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 ```bash
 composer require peopleinside/fla-powcaptcha
 ```
-# How to remove
+## How to remove
 
 ```bash
 composer remove peopleinside/fla-powcaptcha
