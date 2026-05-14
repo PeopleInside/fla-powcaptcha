@@ -72,9 +72,7 @@ class ValidateRegistrationPow
 
         $cacheKey = 'powcaptcha:chal:' . $challenge;
 
-        $cache = $this->cache->store();
-
-        if (!$cache->has($cacheKey)) {
+        if (!$this->cache->has($cacheKey)) {
             return false;
         }
 
@@ -85,7 +83,7 @@ class ValidateRegistrationPow
             return false;
         }
 
-        $cache->forget($cacheKey);
+        $this->cache->forget($cacheKey);
 
         return true;
     }

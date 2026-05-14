@@ -36,10 +36,12 @@ class AddPowValidatorRule
             }
         );
 
-        // Replace the default "{attribute} pow_captcha" message.
-        $laravelValidator->addCustomMessages([
-            'captchaToken.pow_captcha' => $this->resolveValidationMessage(),
-        ]);
+        // Replace the default "{attribute} pow_captcha" message when supported.
+        if (method_exists($laravelValidator, 'setCustomMessages')) {
+            $laravelValidator->setCustomMessages([
+                'captchaToken.pow_captcha' => $this->resolveValidationMessage(),
+            ]);
+        }
 
         // Only add the rule when the corresponding setting is enabled.
         if ($flarumValidator instanceof LogInValidator
@@ -86,9 +88,7 @@ class AddPowValidatorRule
         // Challenge must exist in the cache (issued by us, not expired).
         $cacheKey = 'powcaptcha:chal:' . $challenge;
 
-        $cache = $this->cache->store();
-
-        if (!$cache->has($cacheKey)) {
+        if (!$this->cache->has($cacheKey)) {
             return false;
         }
 
@@ -101,7 +101,7 @@ class AddPowValidatorRule
         }
 
         // Consume the challenge to prevent replay attacks.
-        $cache->forget($cacheKey);
+        $this->cache->forget($cacheKey);
 
         return true;
     }
