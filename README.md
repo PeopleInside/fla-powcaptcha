@@ -31,11 +31,22 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 | PHP        | ≥ 8.1   |
 | Flarum     | ^1.0 or ^2.0 |
 
+## Screenshot
+<img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
+
+
 ## Installation
 
 ```bash
 composer require peopleinside/fla-powcaptcha
 ```
+
+## Update
+
+```bash
+composer update peopleinside/fla-powcaptcha
+```
+
 ## How to remove
 
 ```bash
