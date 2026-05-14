@@ -34,7 +34,11 @@ class PowCaptchaChallengeRouteController implements RequestHandlerInterface
         $challenge  = bin2hex(random_bytes(16));
         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
 
-        $this->cache->put('powcaptcha:chal:' . $challenge, true, self::CHALLENGE_TTL_SECONDS);
+        $this->cache->put(
+            'powcaptcha:chal:' . $challenge,
+            true,
+            new \DateInterval('PT' . self::CHALLENGE_TTL_SECONDS . 'S')
+        );
 
         return new JsonResponse([
             'challenge'  => $challenge,
