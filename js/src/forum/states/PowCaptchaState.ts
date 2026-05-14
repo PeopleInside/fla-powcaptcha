@@ -1,4 +1,4 @@
-import app from 'flarum/common/app';
+import app from 'flarum/forum/app';
 // `m` is a UMD global provided by Flarum core (mithril), no local import needed.
 
 export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';

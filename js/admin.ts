@@ -1,2 +1,2 @@
-// Admin entry point – re-exported by webpack as the extension bundle.
-export { default } from './src/admin/extend';
+// Admin entry point – expose admin module exports.
+export * from './src/admin';
