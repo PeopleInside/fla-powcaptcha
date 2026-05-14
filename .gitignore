@@ -1,0 +1,14 @@
+# Node.js
+js/node_modules/
+
+# Build caches (keep js/dist/ in version control so Composer installs work without Node)
+js/.cache/
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
