@@ -36,6 +36,11 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 ```bash
 composer require peopleinside/fla-powcaptcha
 ```
+# How to remove
+
+```bash
+composer remove peopleinside/fla-powcaptcha
+```
 
 Then enable the extension in the Flarum admin panel.
 
