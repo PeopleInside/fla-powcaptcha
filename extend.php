@@ -13,8 +13,16 @@ use Psr\Http\Server\RequestHandlerInterface;
 use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
 
+/**
+ * Inline API controller used by the PoW challenge route.
+ *
+ * Keeping this class in extend.php avoids runtime failures when external
+ * controller class resolution is unavailable in some deployments.
+ */
 class PowCaptchaChallengeRouteController implements RequestHandlerInterface
 {
+    private const CHALLENGE_TTL_SECONDS = 300;
+
     public function __construct(
         private readonly CacheFactory $cache,
         private readonly SettingsRepositoryInterface $settings
@@ -25,9 +33,8 @@ class PowCaptchaChallengeRouteController implements RequestHandlerInterface
     {
         $challenge  = bin2hex(random_bytes(16));
         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
-        $ttl        = 300;
 
-        $this->cache->put('powcaptcha:chal:' . $challenge, true, $ttl);
+        $this->cache->put('powcaptcha:chal:' . $challenge, true, self::CHALLENGE_TTL_SECONDS);
 
         return new JsonResponse([
             'challenge'  => $challenge,
