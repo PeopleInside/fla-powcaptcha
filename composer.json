@@ -12,7 +12,10 @@
     "autoload": {
         "psr-4": {
             "PeopleInside\\PowCaptcha\\": "src/"
-        }
+        },
+        "files": [
+            "src/Controller/PowCaptchaChallengeController.php"
+        ]
     },
     "extra": {
         "flarum-extension": {
