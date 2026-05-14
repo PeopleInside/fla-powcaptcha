@@ -2,18 +2,22 @@
 
 namespace PeopleInside\PowCaptcha\Controller;
 
+use JsonException;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
-use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 class PowCaptchaChallengeController implements RequestHandlerInterface
 {
     public function __construct(
         private readonly CacheFactory $cache,
-        private readonly SettingsRepositoryInterface $settings
+        private readonly SettingsRepositoryInterface $settings,
+        private readonly ResponseFactoryInterface $responseFactory,
+        private readonly StreamFactoryInterface $streamFactory
     ) {
     }
 
@@ -26,9 +30,21 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         // Store the challenge so the server can verify it later.
         $this->cache->store()->put('powcaptcha:chal:' . $challenge, true, $ttl);
 
-        return new JsonResponse([
-            'challenge'  => $challenge,
-            'difficulty' => $difficulty,
-        ]);
+        try {
+            $payload = json_encode([
+                'challenge'  => $challenge,
+                'difficulty' => $difficulty,
+            ], JSON_THROW_ON_ERROR);
+
+            return $this->responseFactory->createResponse(200)
+                ->withHeader('Content-Type', 'application/json')
+                ->withBody($this->streamFactory->createStream($payload));
+        } catch (JsonException $e) {
+            $errorPayload = '{"error":"Failed to generate challenge response"}';
+
+            return $this->responseFactory->createResponse(500)
+                ->withHeader('Content-Type', 'application/json')
+                ->withBody($this->streamFactory->createStream($errorPayload));
+        }
     }
 }
