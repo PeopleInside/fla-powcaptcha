@@ -27,41 +27,40 @@ export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
     view() {
         const { state } = this.attrs;
         const status = state.getStatus();
+        const isSolving = status === 'loading' || status === 'solving';
 
+        // All three inner panels are always rendered so the container keeps a
+        // fixed height throughout every state transition.  The active panel is
+        // revealed with CSS opacity (see forum.less), which produces a smooth
+        // cross-fade without any layout jump in the modal.
         return (
             <div className={`PowCaptchaWidget PowCaptchaWidget--${status}`}>
-                {(status === 'loading' || status === 'solving') && (
-                    <div className="PowCaptchaWidget-solving">
-                        <LoadingIndicator size="small" />
-                        <span className="PowCaptchaWidget-label">
-                            {app.translator.trans('peopleinside-powcaptcha.forum.solving')}
-                        </span>
-                    </div>
-                )}
+                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solving${isSolving ? ' is-visible' : ''}`}>
+                    <LoadingIndicator size="small" />
+                    <span className="PowCaptchaWidget-label">
+                        {app.translator.trans('peopleinside-powcaptcha.forum.solving')}
+                    </span>
+                </div>
 
-                {status === 'solved' && (
-                    <div className="PowCaptchaWidget-solved">
-                        <span className="icon fas fa-check-circle" aria-hidden="true" />
-                        <span className="PowCaptchaWidget-label">
-                            {app.translator.trans('peopleinside-powcaptcha.forum.verified')}
-                        </span>
-                    </div>
-                )}
+                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solved${status === 'solved' ? ' is-visible' : ''}`}>
+                    <span className="icon fas fa-check-circle" aria-hidden="true" />
+                    <span className="PowCaptchaWidget-label">
+                        {app.translator.trans('peopleinside-powcaptcha.forum.verified')}
+                    </span>
+                </div>
 
-                {status === 'error' && (
-                    <div className="PowCaptchaWidget-error">
-                        <span className="icon fas fa-times-circle" aria-hidden="true" />
-                        <span className="PowCaptchaWidget-label">
-                            {app.translator.trans('peopleinside-powcaptcha.forum.error')}
-                        </span>
-                        <Button
-                            className="Button Button--text"
-                            onclick={() => state.retry()}
-                        >
-                            {app.translator.trans('peopleinside-powcaptcha.forum.retry')}
-                        </Button>
-                    </div>
-                )}
+                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-error${status === 'error' ? ' is-visible' : ''}`}>
+                    <span className="icon fas fa-times-circle" aria-hidden="true" />
+                    <span className="PowCaptchaWidget-label">
+                        {app.translator.trans('peopleinside-powcaptcha.forum.error')}
+                    </span>
+                    <Button
+                        className="Button Button--text"
+                        onclick={() => state.retry()}
+                    >
+                        {app.translator.trans('peopleinside-powcaptcha.forum.retry')}
+                    </Button>
+                </div>
             </div>
         );
     }
