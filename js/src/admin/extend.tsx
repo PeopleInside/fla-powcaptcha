@@ -1,7 +1,7 @@
 import app from 'flarum/admin/app';
 
 export default function registerSettings(): void {
-    const settings = app.extensionData.for('peopleinside-powcaptcha');
+    const settings = app.extensionData.for('peopleinside-fla-powcaptcha');
 
     settings.registerSetting({
         setting: 'peopleinside-powcaptcha.enabled_login',

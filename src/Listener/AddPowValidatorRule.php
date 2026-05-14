@@ -6,7 +6,7 @@ use Flarum\Api\ForgotPasswordValidator;
 use Flarum\Foundation\AbstractValidator;
 use Flarum\Forum\LogInValidator;
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Validation\Validator;
 
 /**
@@ -19,7 +19,7 @@ use Illuminate\Validation\Validator;
 class AddPowValidatorRule
 {
     public function __construct(
-        private readonly CacheRepository $cache,
+        private readonly CacheFactory $cache,
         private readonly SettingsRepositoryInterface $settings
     ) {
     }
@@ -86,7 +86,9 @@ class AddPowValidatorRule
         // Challenge must exist in the cache (issued by us, not expired).
         $cacheKey = 'powcaptcha:chal:' . $challenge;
 
-        if (!$this->cache->has($cacheKey)) {
+        $cache = $this->cache->store();
+
+        if (!$cache->has($cacheKey)) {
             return false;
         }
 
@@ -99,7 +101,7 @@ class AddPowValidatorRule
         }
 
         // Consume the challenge to prevent replay attacks.
-        $this->cache->delete($cacheKey);
+        $cache->forget($cacheKey);
 
         return true;
     }

@@ -4,7 +4,7 @@ namespace PeopleInside\PowCaptcha\Listener;
 
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Arr;
 
 /**
@@ -16,7 +16,7 @@ use Illuminate\Support\Arr;
 class ValidateRegistrationPow
 {
     public function __construct(
-        private readonly CacheRepository $cache,
+        private readonly CacheFactory $cache,
         private readonly SettingsRepositoryInterface $settings
     ) {
     }
@@ -72,7 +72,9 @@ class ValidateRegistrationPow
 
         $cacheKey = 'powcaptcha:chal:' . $challenge;
 
-        if (!$this->cache->has($cacheKey)) {
+        $cache = $this->cache->store();
+
+        if (!$cache->has($cacheKey)) {
             return false;
         }
 
@@ -83,7 +85,7 @@ class ValidateRegistrationPow
             return false;
         }
 
-        $this->cache->delete($cacheKey);
+        $cache->forget($cacheKey);
 
         return true;
     }
