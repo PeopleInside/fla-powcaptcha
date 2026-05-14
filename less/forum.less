@@ -1,18 +1,35 @@
 // ── PoW CAPTCHA widget styles ────────────────────────────────────────────────
 
 .PowCaptchaWidget {
-    display: flex;
-    align-items: center;
-    padding: 8px 0 4px;
+    // Fixed height keeps the modal dialog from resizing between states.
+    // All three inner panels are absolutely positioned so they overlap;
+    // the active one is revealed by opacity, producing a smooth cross-fade
+    // with no layout jump.
+    position: relative;
+    height: 32px;
+    margin: 8px 0 4px;
     font-size: 13px;
     line-height: 1.4;
-    min-height: 32px;
 
-    // ── Solving state ─────────────────────────────────────────────────
-    &-solving {
+    // ── Shared inner-panel rules ──────────────────────────────────────
+    &-inner {
+        position: absolute;
+        inset: 0;
         display: flex;
         align-items: center;
         gap: 8px;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+
+        &.is-visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
+
+    // ── Solving state ─────────────────────────────────────────────────
+    &-solving {
         color: var(--muted-color, #888);
 
         .LoadingIndicator {
@@ -24,9 +41,6 @@
 
     // ── Solved state ──────────────────────────────────────────────────
     &-solved {
-        display: flex;
-        align-items: center;
-        gap: 8px;
         color: var(--success-color, #22c55e);
 
         .icon {
@@ -36,11 +50,7 @@
 
     // ── Error state ───────────────────────────────────────────────────
     &-error {
-        display: flex;
-        align-items: center;
-        gap: 8px;
         color: var(--error-color, #ef4444);
-        flex-wrap: wrap;
 
         .icon {
             font-size: 16px;
@@ -55,6 +65,7 @@
             color: inherit;
             background: none;
             border: none;
+            flex-shrink: 0;
 
             &:hover {
                 opacity: 0.8;
