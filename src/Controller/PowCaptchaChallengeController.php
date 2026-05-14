@@ -39,7 +39,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             return $this->responseFactory->createResponse(200)
                 ->withHeader('Content-Type', 'application/json')
                 ->withBody($this->streamFactory->createStream($payload));
-        } catch (JsonException) {
+        } catch (JsonException $e) {
             $errorPayload = '{"error":"Failed to generate challenge response"}';
 
             return $this->responseFactory->createResponse(500)
