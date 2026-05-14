@@ -3,7 +3,7 @@
 namespace PeopleInside\PowCaptcha\Controller;
 
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -12,7 +12,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 class PowCaptchaChallengeController implements RequestHandlerInterface
 {
     public function __construct(
-        private readonly CacheRepository $cache,
+        private readonly CacheFactory $cache,
         private readonly SettingsRepositoryInterface $settings
     ) {
     }
@@ -24,7 +24,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         $ttl        = 300; // 5 minutes
 
         // Store the challenge so the server can verify it later.
-        $this->cache->put('powcaptcha:chal:' . $challenge, true, $ttl);
+        $this->cache->store()->put('powcaptcha:chal:' . $challenge, true, $ttl);
 
         return new JsonResponse([
             'challenge'  => $challenge,
