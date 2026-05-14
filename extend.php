@@ -3,10 +3,38 @@
 use Flarum\Extend;
 use Flarum\Forum\LogInValidator;
 use Flarum\Api\ForgotPasswordValidator;
+use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving as UserSaving;
-use PeopleInside\PowCaptcha\Controller\PowCaptchaChallengeController;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Laminas\Diactoros\Response\JsonResponse;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
+
+class PowCaptchaChallengeRouteController implements RequestHandlerInterface
+{
+    public function __construct(
+        private readonly CacheFactory $cache,
+        private readonly SettingsRepositoryInterface $settings
+    ) {
+    }
+
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        $challenge  = bin2hex(random_bytes(16));
+        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
+        $ttl        = 300;
+
+        $this->cache->put('powcaptcha:chal:' . $challenge, true, $ttl);
+
+        return new JsonResponse([
+            'challenge'  => $challenge,
+            'difficulty' => $difficulty,
+        ], 200);
+    }
+}
 
 return [
     // ── Frontend assets ────────────────────────────────────────────────
@@ -33,7 +61,7 @@ return [
 
     // ── API route: issue a PoW challenge ───────────────────────────────
     (new Extend\Routes('api'))
-        ->get('/powcaptcha/challenge', 'powcaptcha.challenge', PowCaptchaChallengeController::class),
+        ->get('/powcaptcha/challenge', 'powcaptcha.challenge', PowCaptchaChallengeRouteController::class),
 
     // ── Validator hooks: login + forgot password ───────────────────────
     (new Extend\Validator(LogInValidator::class))
