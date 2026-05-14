@@ -1,0 +1,82 @@
+// ── PoW CAPTCHA widget styles ────────────────────────────────────────────────
+
+.PowCaptchaWidget {
+    display: flex;
+    align-items: center;
+    padding: 8px 0 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    min-height: 32px;
+
+    // ── Solving state ─────────────────────────────────────────────────
+    &-solving {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted-color, #888);
+
+        .LoadingIndicator {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+    }
+
+    // ── Solved state ──────────────────────────────────────────────────
+    &-solved {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--success-color, #22c55e);
+
+        .icon {
+            font-size: 16px;
+        }
+    }
+
+    // ── Error state ───────────────────────────────────────────────────
+    &-error {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--error-color, #ef4444);
+        flex-wrap: wrap;
+
+        .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .Button--text {
+            padding: 0;
+            height: auto;
+            font-size: inherit;
+            text-decoration: underline;
+            color: inherit;
+            background: none;
+            border: none;
+
+            &:hover {
+                opacity: 0.8;
+            }
+        }
+    }
+
+    &-label {
+        flex: 1;
+    }
+}
+
+// ── Dark mode support ─────────────────────────────────────────────────────────
+// Flarum sets data-theme="dark" (or a variant) on <html>.
+[data-theme^="dark"] {
+    .PowCaptchaWidget-solving {
+        color: var(--muted-color, #aaa);
+    }
+    .PowCaptchaWidget-solved {
+        color: var(--success-color, #4ade80);
+    }
+    .PowCaptchaWidget-error {
+        color: var(--error-color, #f87171);
+    }
+}
