@@ -1,8 +1,8 @@
-import app from 'flarum/compat/app';
-import { extend } from 'flarum/compat/extend';
-import LogInModal from 'flarum/compat/components/LogInModal';
-import SignUpModal from 'flarum/compat/components/SignUpModal';
-import ForgotPasswordModal from 'flarum/compat/components/ForgotPasswordModal';
+import app from 'flarum/forum/app';
+import { extend } from 'flarum/common/extend';
+import LogInModal from 'flarum/forum/components/LogInModal';
+import SignUpModal from 'flarum/forum/components/SignUpModal';
+import ForgotPasswordModal from 'flarum/forum/components/ForgotPasswordModal';
 import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState from './states/PowCaptchaState';
 
