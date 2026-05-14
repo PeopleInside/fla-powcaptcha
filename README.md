@@ -50,18 +50,9 @@ Go to **Admin → Extensions → PoW CAPTCHA** and choose:
 | Enable on Password Reset | ✓ | Protect the forgot-password form |
 | Difficulty | 3 – Standard (~100 ms) | SHA-256 leading-zero count (1–5) |
 
-## Development
+## Development (for contributors only)
 
-```bash
-# Install JS dependencies
-cd js && npm install
-
-# Watch for changes (development)
-npm run dev
-
-# Production build
-npm run build
-```
+The extension is distributed with pre-compiled frontend assets (`js/dist/*`), so **no JS build step is required** to install or use it.
 
 ## Security Notes
 
