@@ -112,7 +112,7 @@ export default class PowCaptchaState {
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashBytes = new Uint8Array(hashBuffer);
 
-            if (this.hasRequiredLeadingZeros(hashBytes, difficulty)) {
+            if (this.meetsHashDifficulty(hashBytes, difficulty)) {
                 return `${challenge}:${nonce}`;
             }
 
@@ -123,7 +123,7 @@ export default class PowCaptchaState {
         }
     }
 
-    private hasRequiredLeadingZeros(hashBytes: Uint8Array, difficulty: number): boolean {
+    private meetsHashDifficulty(hashBytes: Uint8Array, difficulty: number): boolean {
         const requiredFullZeroBytes = Math.floor(difficulty / 2);
 
         for (let byteIndex = 0; byteIndex < requiredFullZeroBytes; byteIndex++) {
