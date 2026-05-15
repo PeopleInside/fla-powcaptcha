@@ -12,6 +12,8 @@ export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
  *   solved/error ──► idle  (after reset())
  */
 export default class PowCaptchaState {
+    private static readonly SOLVE_YIELD_INTERVAL = 1024;
+
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
 
@@ -115,7 +117,7 @@ export default class PowCaptchaState {
             }
 
             // Yield periodically to keep the UI responsive.
-            if (nonce % 1024 === 0) {
+            if (nonce % PowCaptchaState.SOLVE_YIELD_INTERVAL === 0) {
                 await new Promise<void>((r) => setTimeout(r, 0));
             }
         }
@@ -124,8 +126,8 @@ export default class PowCaptchaState {
     private hasRequiredLeadingZeros(hashBytes: Uint8Array, difficulty: number): boolean {
         const requiredFullZeroBytes = Math.floor(difficulty / 2);
 
-        for (let index = 0; index < requiredFullZeroBytes; index++) {
-            if (hashBytes[index] !== 0) {
+        for (let byteIndex = 0; byteIndex < requiredFullZeroBytes; byteIndex++) {
+            if (hashBytes[byteIndex] !== 0) {
                 return false;
             }
         }
