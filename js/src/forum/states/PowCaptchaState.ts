@@ -122,16 +122,16 @@ export default class PowCaptchaState {
     }
 
     private hasRequiredLeadingZeros(hashBytes: Uint8Array, difficulty: number): boolean {
-        const fullZeroBytes = Math.floor(difficulty / 2);
+        const requiredFullZeroBytes = Math.floor(difficulty / 2);
 
-        for (let index = 0; index < fullZeroBytes; index++) {
+        for (let index = 0; index < requiredFullZeroBytes; index++) {
             if (hashBytes[index] !== 0) {
                 return false;
             }
         }
 
         if (difficulty % 2 === 1) {
-            return (hashBytes[fullZeroBytes] & 0xf0) === 0;
+            return (hashBytes[requiredFullZeroBytes] & 0xf0) === 0;
         }
 
         return true;
