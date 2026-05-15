@@ -46,10 +46,10 @@ function applyToModal(modalPrototype: any, enabledKey: string, dataMethod: strin
         );
     });
 
-    // Reset the widget when a submission error occurs.
+    // Restart the widget when a submission error occurs.
     extend(modalPrototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
-        this.powCaptchaState?.reset();
+        this.powCaptchaState?.retry();
     });
 }
 
