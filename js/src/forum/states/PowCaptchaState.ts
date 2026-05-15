@@ -12,6 +12,8 @@ export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
  *   solved/error ──► idle  (after reset())
  */
 export default class PowCaptchaState {
+    private static readonly SOLVE_YIELD_INTERVAL = 1024;
+
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
 
@@ -101,25 +103,41 @@ export default class PowCaptchaState {
      */
     private async solve(challenge: string, difficulty: number): Promise<string> {
         const encoder = new TextEncoder();
-        const prefix = '0'.repeat(difficulty);
+        const challengePrefix = `${challenge}:`;
 
         for (let nonce = 0; ; nonce++) {
             if (this.aborted) throw new Error('aborted');
 
-            const data = encoder.encode(`${challenge}:${nonce}`);
+            const data = encoder.encode(challengePrefix + nonce);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashHex = Array.from(new Uint8Array(hashBuffer))
-                .map((b) => b.toString(16).padStart(2, '0'))
-                .join('');
+            const hashBytes = new Uint8Array(hashBuffer);
 
-            if (hashHex.startsWith(prefix)) {
+            if (this.meetsHashDifficulty(hashBytes, difficulty)) {
                 return `${challenge}:${nonce}`;
             }
 
-            // Yield to the event loop every 200 iterations.
-            if (nonce % 200 === 0) {
+            // Yield periodically to keep the UI responsive.
+            if (nonce % PowCaptchaState.SOLVE_YIELD_INTERVAL === 0) {
                 await new Promise<void>((r) => setTimeout(r, 0));
             }
         }
+    }
+
+    private meetsHashDifficulty(hashBytes: Uint8Array, difficulty: number): boolean {
+        // Difficulty is measured in leading zero hex chars (nibbles).
+        const requiredFullZeroBytes = Math.floor(difficulty / 2);
+
+        for (let byteIndex = 0; byteIndex < requiredFullZeroBytes; byteIndex++) {
+            if (hashBytes[byteIndex] !== 0) {
+                return false;
+            }
+        }
+
+        if (difficulty % 2 === 1) {
+            // Odd difficulty needs one extra zero nibble (high 4 bits).
+            return (hashBytes[requiredFullZeroBytes] & 0xf0) === 0;
+        }
+
+        return true;
     }
 }
