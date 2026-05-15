@@ -1,6 +1,7 @@
 {
     "private": true,
     "name": "@peopleinside/fla-powcaptcha",
+    "license": "Apache-2.0",
     "devDependencies": {
         "flarum-tsconfig": "^1.0.3",
         "flarum-webpack-config": "^2.0.2",
