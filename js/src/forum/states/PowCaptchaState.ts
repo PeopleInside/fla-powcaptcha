@@ -124,6 +124,7 @@ export default class PowCaptchaState {
     }
 
     private meetsHashDifficulty(hashBytes: Uint8Array, difficulty: number): boolean {
+        // Difficulty is measured in leading zero hex chars (nibbles).
         const requiredFullZeroBytes = Math.floor(difficulty / 2);
 
         for (let byteIndex = 0; byteIndex < requiredFullZeroBytes; byteIndex++) {
@@ -133,6 +134,7 @@ export default class PowCaptchaState {
         }
 
         if (difficulty % 2 === 1) {
+            // Odd difficulty needs one extra zero nibble (high 4 bits).
             return (hashBytes[requiredFullZeroBytes] & 0xf0) === 0;
         }
 
