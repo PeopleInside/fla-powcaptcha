@@ -7,6 +7,7 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 class PowTokenVerifier
 {
     public const CHALLENGE_CACHE_PREFIX = 'powcaptcha:chal:';
+    public const MAX_DIFFICULTY = 8;
 
     public function __construct(
         private readonly CacheRepository $cache
@@ -32,12 +33,17 @@ class PowTokenVerifier
         }
 
         $hash           = hash('sha256', $challenge . ':' . $nonce);
-        $requiredPrefix = str_repeat('0', max(1, $difficulty));
+        $requiredPrefix = str_repeat('0', self::normalizeDifficulty($difficulty));
 
         if (!str_starts_with($hash, $requiredPrefix)) {
             return false;
         }
 
         return $this->cache->pull(self::CHALLENGE_CACHE_PREFIX . $challenge) !== null;
+    }
+
+    public static function normalizeDifficulty(int $difficulty): int
+    {
+        return max(1, min(self::MAX_DIFFICULTY, $difficulty));
     }
 }

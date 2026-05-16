@@ -33,7 +33,9 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         }
 
         $challenge = bin2hex(random_bytes(16)); // 32 hex chars, 128-bit randomness
-        $difficulty = max(1, (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3));
+        $difficulty = PowTokenVerifier::normalizeDifficulty(
+            (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
+        );
 
         // Store the challenge so the server can verify it later.
         $this->cache->put(
@@ -61,8 +63,29 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): string
     {
-        $ipAddress = (string) ($request->getServerParams()['REMOTE_ADDR'] ?? 'unknown');
+        $ipAddress = $request->getAttribute('ipAddress');
+
+        if (!is_string($ipAddress) || $ipAddress === '') {
+            $ipAddress = $this->resolveForwardedOrRemoteAddress($request);
+        }
 
         return 'powcaptcha:rate:' . sha1($ipAddress);
+    }
+
+    private function resolveForwardedOrRemoteAddress(ServerRequestInterface $request): string
+    {
+        $headers = $request->getServerParams();
+        $forwardedFor = (string) ($headers['HTTP_X_FORWARDED_FOR'] ?? '');
+
+        if ($forwardedFor !== '') {
+            $candidates = array_map('trim', explode(',', $forwardedFor));
+            $clientIp = $candidates[0] ?? '';
+
+            if ($clientIp !== '') {
+                return $clientIp;
+            }
+        }
+
+        return (string) ($headers['REMOTE_ADDR'] ?? 'unknown');
     }
 }
