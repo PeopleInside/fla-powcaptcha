@@ -70,7 +70,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         $ipAddress = $request->getAttribute('ipAddress');
 
         if (!is_string($ipAddress) || $ipAddress === '') {
-            $ipAddress = $this->resolveForwardedOrRemoteAddress($request);
+            $ipAddress = (string) ($request->getServerParams()['REMOTE_ADDR'] ?? '');
         }
 
         if ($ipAddress === '') {
@@ -78,22 +78,5 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         }
 
         return 'powcaptcha:rate:' . sha1($ipAddress);
-    }
-
-    private function resolveForwardedOrRemoteAddress(ServerRequestInterface $request): string
-    {
-        $headers = $request->getServerParams();
-        $forwardedFor = (string) ($headers['HTTP_X_FORWARDED_FOR'] ?? '');
-
-        if ($forwardedFor !== '') {
-            $candidates = array_map('trim', explode(',', $forwardedFor));
-            $clientIp = $candidates[0] ?? '';
-
-            if ($clientIp !== '') {
-                return $clientIp;
-            }
-        }
-
-        return (string) ($headers['REMOTE_ADDR'] ?? '');
     }
 }
