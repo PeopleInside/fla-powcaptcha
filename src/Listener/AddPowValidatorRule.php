@@ -6,8 +6,8 @@ use Flarum\Api\ForgotPasswordValidator;
 use Flarum\Foundation\AbstractValidator;
 use Flarum\Forum\LogInValidator;
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Validation\Validator;
+use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 
 /**
  * Invokable class used by `Extend\Validator::configure()`.
@@ -19,8 +19,8 @@ use Illuminate\Validation\Validator;
 class AddPowValidatorRule
 {
     public function __construct(
-        private readonly CacheFactory $cache,
-        private readonly SettingsRepositoryInterface $settings
+        private readonly SettingsRepositoryInterface $settings,
+        private readonly PowTokenVerifier $tokenVerifier
     ) {
     }
 
@@ -32,7 +32,7 @@ class AddPowValidatorRule
         $laravelValidator->addExtension(
             'pow_captcha',
             function (string $attribute, mixed $value) use ($difficulty): bool {
-                return is_string($value) && $this->verifyToken($value, $difficulty);
+                return is_string($value) && $this->tokenVerifier->verifyToken($value, $difficulty);
             }
         );
 
@@ -55,55 +55,6 @@ class AddPowValidatorRule
         ) {
             $laravelValidator->addRules(['captchaToken' => ['required', 'pow_captcha']]);
         }
-    }
-
-    // ─── Verification logic ───────────────────────────────────────────
-
-    /**
-     * Verify that a submitted token is a valid, single-use PoW solution.
-     *
-     * Token format: "<challenge>:<nonce>"
-     *   challenge – 32 hex chars (128-bit random value issued by the server)
-     *   nonce     – decimal integer found by the client
-     */
-    private function verifyToken(string $token, int $difficulty): bool
-    {
-        $parts = explode(':', $token, 2);
-
-        if (count($parts) !== 2) {
-            return false;
-        }
-
-        [$challenge, $nonce] = $parts;
-
-        // Validate format constraints.
-        if (!ctype_xdigit($challenge) || strlen($challenge) !== 32) {
-            return false;
-        }
-
-        if (!ctype_digit($nonce)) {
-            return false;
-        }
-
-        // Challenge must exist in the cache (issued by us, not expired).
-        $cacheKey = 'powcaptcha:chal:' . $challenge;
-
-        if (!$this->cache->has($cacheKey)) {
-            return false;
-        }
-
-        // Verify the hash meets the difficulty requirement.
-        $hash           = hash('sha256', $challenge . ':' . $nonce);
-        $requiredPrefix = str_repeat('0', $difficulty);
-
-        if (!str_starts_with($hash, $requiredPrefix)) {
-            return false;
-        }
-
-        // Consume the challenge to prevent replay attacks.
-        $this->cache->forget($cacheKey);
-
-        return true;
     }
 
     private function resolveValidationMessage(): string
