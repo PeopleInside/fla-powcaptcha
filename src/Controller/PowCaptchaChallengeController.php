@@ -54,6 +54,10 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
     {
         $rateKey = $this->buildRateLimitKey($request);
 
+        if ($rateKey === null) {
+            return false;
+        }
+
         if ($this->cache->add($rateKey, 1, self::RATE_LIMIT_WINDOW_SECONDS)) {
             return true;
         }
@@ -61,12 +65,16 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         return (int) $this->cache->increment($rateKey) <= self::RATE_LIMIT_MAX_REQUESTS;
     }
 
-    private function buildRateLimitKey(ServerRequestInterface $request): string
+    private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
         $ipAddress = $request->getAttribute('ipAddress');
 
         if (!is_string($ipAddress) || $ipAddress === '') {
             $ipAddress = $this->resolveForwardedOrRemoteAddress($request);
+        }
+
+        if ($ipAddress === '') {
+            return null;
         }
 
         return 'powcaptcha:rate:' . sha1($ipAddress);
@@ -86,6 +94,6 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             }
         }
 
-        return (string) ($headers['REMOTE_ADDR'] ?? 'unknown');
+        return (string) ($headers['REMOTE_ADDR'] ?? '');
     }
 }
