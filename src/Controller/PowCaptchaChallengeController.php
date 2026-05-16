@@ -56,7 +56,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function canIssueChallenge(ServerRequestInterface $request, ?int &$retryAfter = null): bool
     {
-        $rateKey = $this->buildRateLimitKey($request, true);
+        $rateKey = $this->buildRateLimitKey($request);
 
         if ($rateKey === null) {
             $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
@@ -74,7 +74,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         return true;
     }
 
-    private function buildRateLimitKey(ServerRequestInterface $request, bool $withPrefix = false): ?string
+    private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
         $ipAddress = $request->getAttribute('ipAddress');
 
@@ -86,8 +86,6 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             return null;
         }
 
-        $hashedIp = sha1($ipAddress);
-
-        return $withPrefix ? 'powcaptcha:rate:' . $hashedIp : $hashedIp;
+        return 'powcaptcha:rate:' . sha1($ipAddress);
     }
 }
