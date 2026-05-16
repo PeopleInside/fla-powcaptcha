@@ -4,8 +4,8 @@ namespace PeopleInside\PowCaptcha\Listener;
 
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving;
-use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Support\Arr;
+use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 
 /**
  * Validates the PoW token during user registration (User\Event\Saving).
@@ -16,8 +16,8 @@ use Illuminate\Support\Arr;
 class ValidateRegistrationPow
 {
     public function __construct(
-        private readonly CacheFactory $cache,
-        private readonly SettingsRepositoryInterface $settings
+        private readonly SettingsRepositoryInterface $settings,
+        private readonly PowTokenVerifier $tokenVerifier
     ) {
     }
 
@@ -43,48 +43,10 @@ class ValidateRegistrationPow
             ?? '';
         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
 
-        if (!is_string($token) || !$this->verifyToken($token, $difficulty)) {
+        if (!is_string($token) || !$this->tokenVerifier->verifyToken($token, $difficulty)) {
             throw new \Flarum\Foundation\ValidationException(
                 ['captchaToken' => ['The security challenge could not be verified. Please try again.']]
             );
         }
-    }
-
-    // ─── Verification logic (duplicated from AddPowValidatorRule) ─────
-
-    private function verifyToken(string $token, int $difficulty): bool
-    {
-        $parts = explode(':', $token, 2);
-
-        if (count($parts) !== 2) {
-            return false;
-        }
-
-        [$challenge, $nonce] = $parts;
-
-        if (!ctype_xdigit($challenge) || strlen($challenge) !== 32) {
-            return false;
-        }
-
-        if (!ctype_digit($nonce)) {
-            return false;
-        }
-
-        $cacheKey = 'powcaptcha:chal:' . $challenge;
-
-        if (!$this->cache->has($cacheKey)) {
-            return false;
-        }
-
-        $hash           = hash('sha256', $challenge . ':' . $nonce);
-        $requiredPrefix = str_repeat('0', $difficulty);
-
-        if (!str_starts_with($hash, $requiredPrefix)) {
-            return false;
-        }
-
-        $this->cache->forget($cacheKey);
-
-        return true;
     }
 }

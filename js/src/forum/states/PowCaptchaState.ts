@@ -13,6 +13,8 @@ export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
  */
 export default class PowCaptchaState {
     private static readonly SOLVE_YIELD_INTERVAL = 1024;
+    private static readonly MAX_SOLVE_ATTEMPTS = 2_000_000;
+    private static readonly MAX_SOLVE_DURATION_MS = 15_000;
 
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
@@ -104,15 +106,21 @@ export default class PowCaptchaState {
     private async solve(challenge: string, difficulty: number): Promise<string> {
         const encoder = new TextEncoder();
         const challengePrefix = `${challenge}:`;
+        const startedAt = Date.now();
+        const normalizedDifficulty = Math.max(1, Math.min(8, difficulty));
 
-        for (let nonce = 0; ; nonce++) {
+        for (let nonce = 0; nonce < PowCaptchaState.MAX_SOLVE_ATTEMPTS; nonce++) {
             if (this.aborted) throw new Error('aborted');
+
+            if (Date.now() - startedAt > PowCaptchaState.MAX_SOLVE_DURATION_MS) {
+                throw new Error('challenge solve timeout');
+            }
 
             const data = encoder.encode(challengePrefix + nonce);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashBytes = new Uint8Array(hashBuffer);
 
-            if (this.meetsHashDifficulty(hashBytes, difficulty)) {
+            if (this.meetsHashDifficulty(hashBytes, normalizedDifficulty)) {
                 return `${challenge}:${nonce}`;
             }
 
@@ -121,6 +129,8 @@ export default class PowCaptchaState {
                 await new Promise<void>((r) => setTimeout(r, 0));
             }
         }
+
+        throw new Error('challenge solve iteration limit reached');
     }
 
     private meetsHashDifficulty(hashBytes: Uint8Array, difficulty: number): boolean {
