@@ -3,6 +3,7 @@
 namespace PeopleInside\PowCaptcha\Controller;
 
 use Flarum\Settings\SettingsRepositoryInterface;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
@@ -18,17 +19,20 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     public function __construct(
         private readonly CacheRepository $cache,
-        private readonly SettingsRepositoryInterface $settings
+        private readonly SettingsRepositoryInterface $settings,
+        private readonly RateLimiter $rateLimiter
     ) {
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (!$this->canIssueChallenge($request)) {
+        $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
+
+        if (!$this->canIssueChallenge($request, $retryAfter)) {
             return new JsonResponse(
                 ['error' => 'Too many challenge requests. Please retry shortly.'],
                 429,
-                ['Retry-After' => (string) self::RATE_LIMIT_WINDOW_SECONDS]
+                ['Retry-After' => (string) max(1, $retryAfter)]
             );
         }
 
@@ -50,22 +54,27 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         ], 200);
     }
 
-    private function canIssueChallenge(ServerRequestInterface $request): bool
+    private function canIssueChallenge(ServerRequestInterface $request, ?int &$retryAfter = null): bool
     {
-        $rateKey = $this->buildRateLimitKey($request);
+        $rateKey = $this->buildRateLimitKey($request, true);
 
         if ($rateKey === null) {
+            $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
             return false;
         }
 
-        if ($this->cache->add($rateKey, 1, self::RATE_LIMIT_WINDOW_SECONDS)) {
-            return true;
+        if ($this->rateLimiter->tooManyAttempts($rateKey, self::RATE_LIMIT_MAX_REQUESTS)) {
+            $retryAfter = $this->rateLimiter->availableIn($rateKey);
+
+            return false;
         }
 
-        return (int) $this->cache->increment($rateKey) <= self::RATE_LIMIT_MAX_REQUESTS;
+        $this->rateLimiter->hit($rateKey, self::RATE_LIMIT_WINDOW_SECONDS);
+
+        return true;
     }
 
-    private function buildRateLimitKey(ServerRequestInterface $request): ?string
+    private function buildRateLimitKey(ServerRequestInterface $request, bool $withPrefix = false): ?string
     {
         $ipAddress = $request->getAttribute('ipAddress');
 
@@ -77,6 +86,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             return null;
         }
 
-        return 'powcaptcha:rate:' . sha1($ipAddress);
+        $hashedIp = sha1($ipAddress);
+
+        return $withPrefix ? 'powcaptcha:rate:' . $hashedIp : $hashedIp;
     }
 }

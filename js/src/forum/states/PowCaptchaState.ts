@@ -109,7 +109,7 @@ export default class PowCaptchaState {
         const startedAt = Date.now();
         const normalizedDifficulty = Math.max(1, Math.min(8, difficulty));
 
-        for (let nonce = 0; nonce < PowCaptchaState.MAX_SOLVE_ATTEMPTS; nonce++) {
+        for (let nonce = 0; nonce <= PowCaptchaState.MAX_SOLVE_ATTEMPTS; nonce++) {
             if (this.aborted) throw new Error('aborted');
 
             if (Date.now() - startedAt > PowCaptchaState.MAX_SOLVE_DURATION_MS) {
