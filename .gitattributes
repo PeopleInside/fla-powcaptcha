@@ -1,0 +1,11 @@
+# Files excluded from Composer/git archive distributions (F-07: no source maps in prod)
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/js/src             export-ignore
+/js/package.json    export-ignore
+/js/package-lock.json export-ignore
+/js/tsconfig.json   export-ignore
+/js/webpack.config.js export-ignore
+/js/admin.ts        export-ignore
+/js/forum.ts        export-ignore
+/js/dist/*.map      export-ignore

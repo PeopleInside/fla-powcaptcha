@@ -3,6 +3,7 @@
 namespace PeopleInside\PowCaptcha\Service;
 
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Psr\Log\LoggerInterface;
 
 class PowTokenVerifier
 {
@@ -10,7 +11,8 @@ class PowTokenVerifier
     public const MAX_DIFFICULTY = 8;
 
     public function __construct(
-        private readonly CacheRepository $cache
+        private readonly CacheRepository $cache,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -39,7 +41,16 @@ class PowTokenVerifier
             return false;
         }
 
-        return $this->cache->pull(self::CHALLENGE_CACHE_PREFIX . $challenge) !== null;
+        // F-06: If the cache backend is unavailable, pull() may throw.
+        // We treat a cache failure as a verification failure (fail-closed)
+        // and log the error so operators are alerted.
+        try {
+            return $this->cache->pull(self::CHALLENGE_CACHE_PREFIX . $challenge) !== null;
+        } catch (\Throwable $e) {
+            $this->logger->error('[powcaptcha] Cache read failed during token verification: ' . $e->getMessage());
+
+            return false;
+        }
     }
 
     public static function normalizeDifficulty(int $difficulty): int

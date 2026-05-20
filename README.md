@@ -82,6 +82,14 @@ The extension is distributed with pre-compiled frontend assets (`js/dist/*`), so
 - Each challenge is valid for **5 minutes** and is **single-use** (deleted after successful verification).
 - The challenge is a 128-bit cryptographically random value; it cannot be guessed or forged.
 - The server independently re-computes the SHA-256 hash to verify the solution.
+- **Difficulty cap (F-02):** The client enforces a hard limit of 2,000,000 iterations and a 15-second timeout. At difficulty ≥ 6 some users on slow devices may hit this limit before finding a solution. Keep difficulty at **3–4** for general-purpose forums; only raise it if you have evidence of coordinated bot attacks and have verified the impact on real users.
+- **Cache dependency (F-06):** Challenge verification requires the Flarum cache backend to be available. If the cache resets or becomes unreachable, all PoW verifications will fail (fail-closed) and users will be unable to log in or register until the cache is restored. Use a persistent cache driver (Redis or Memcached) in production, and monitor cache availability. The extension logs cache errors under the `[powcaptcha]` prefix.
+- **Trusted proxies (F-03):** Rate limiting uses the IP address resolved by Flarum's `TrustProxies` middleware. If your server runs behind a reverse proxy or CDN, configure trusted proxies in `config.php` to prevent IP spoofing:
+
+```php
+// config.php
+'trusted_proxies' => ['10.0.0.0/8', '172.16.0.0/12'],  // your proxy CIDRs
+```
 
 ## License
 

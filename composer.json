@@ -14,6 +14,19 @@
             "PeopleInside\\PowCaptcha\\": "src/"
         }
     },
+    "archive": {
+        "exclude": [
+            "js/src",
+            "js/package.json",
+            "js/package-lock.json",
+            "js/tsconfig.json",
+            "js/webpack.config.js",
+            "js/admin.ts",
+            "js/forum.ts",
+            "js/dist/*.map",
+            ".gitignore"
+        ]
+    },
     "extra": {
         "flarum-extension": {
             "title": "PoW CAPTCHA",

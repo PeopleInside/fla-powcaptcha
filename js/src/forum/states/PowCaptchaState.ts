@@ -85,8 +85,14 @@ export default class PowCaptchaState {
         const apiUrl = (app.forum.attribute<string>('apiUrl') as string) || '/api';
         const url = apiUrl.replace(/\/$/, '') + '/powcaptcha/challenge';
 
+        // F-01: POST aligns with the server-side route change and ensures
+        // CSRF middleware coverage on platforms that enforce it for mutations.
         const response = await fetch(url, {
-            headers: { Accept: 'application/json' },
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-CSRF-Token': (app as any).session?.csrfToken ?? '',
+            },
         });
 
         if (!response.ok) {

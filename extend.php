@@ -32,8 +32,9 @@ return [
         ->serializeToForum('peopleinside-powcaptcha.enabledForgot', 'peopleinside-powcaptcha.enabled_forgot', 'boolval'),
 
     // ── API route: issue a PoW challenge ───────────────────────────────
+    // POST (not GET) for semantic correctness and CSRF-middleware alignment.
     (new Extend\Routes('api'))
-        ->get('/powcaptcha/challenge', 'powcaptcha.challenge', PowCaptchaChallengeController::class),
+        ->post('/powcaptcha/challenge', 'powcaptcha.challenge', PowCaptchaChallengeController::class),
 
     // ── Validator hooks: login + forgot password ───────────────────────
     (new Extend\Validator(LogInValidator::class))
