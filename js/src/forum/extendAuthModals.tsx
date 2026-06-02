@@ -42,17 +42,20 @@ function applyToModal(modalClass: ModalClass, enabledKey: string, dataMethod: st
     // Inject the token into the request payload.
     extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
         if (!isEnabled(enabledKey)) return;
+        if (!data || typeof data !== 'object') return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
     });
 
     // Add the widget to the form's field list (just above the submit button).
     extend(prototype, 'fields', function (this: any, items: any) {
         if (!isEnabled(enabledKey)) return;
-        if (!this.powCaptchaState) return;
+        if (!this.powCaptchaState || !items || typeof items.add !== 'function') return;
 
         items.add(
             'pow-captcha',
-            <PowCaptchaWidget state={this.powCaptchaState} />,
+            <div className="Form-group">
+                <PowCaptchaWidget state={this.powCaptchaState} />
+            </div>,
             -5
         );
     });
