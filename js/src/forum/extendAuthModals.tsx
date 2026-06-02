@@ -1,5 +1,8 @@
 import app from 'flarum/forum/app';
 import { extend } from 'flarum/common/extend';
+import LogInModal from 'flarum/forum/components/LogInModal';
+import SignUpModal from 'flarum/forum/components/SignUpModal';
+import ForgotPasswordModal from 'flarum/forum/components/ForgotPasswordModal';
 import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState from './states/PowCaptchaState';
 
@@ -14,25 +17,25 @@ function isEnabled(key: string): boolean {
 /**
  * Extend a modal with the PoW CAPTCHA widget.
  *
- * @param modulePath  Lazy-module path of the Flarum modal component.
+ * @param modalPrototype  Prototype of the Flarum modal component.
  * @param enabledKey  Forum-attribute key that controls whether CAPTCHA is active.
  * @param dataMethod  Name of the method that builds the POST body.
  */
-function applyToModal(modalPath: string, enabledKey: string, dataMethod: string): void {
+function applyToModal(modalPrototype: any, enabledKey: string, dataMethod: string): void {
     // Create the state object when the modal is initialised.
-    extend(modalPath, 'oninit', function (this: any) {
+    extend(modalPrototype, 'oninit', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         this.powCaptchaState = new PowCaptchaState();
     });
 
     // Inject the token into the request payload.
-    extend(modalPath, dataMethod, function (this: any, data: Record<string, unknown>) {
+    extend(modalPrototype, dataMethod, function (this: any, data: Record<string, unknown>) {
         if (!isEnabled(enabledKey)) return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
     });
 
     // Add the widget to the form's field list (just above the submit button).
-    extend(modalPath, 'fields', function (this: any, items: any) {
+    extend(modalPrototype, 'fields', function (this: any, items: any) {
         if (!isEnabled(enabledKey)) return;
         if (!this.powCaptchaState) return;
 
@@ -44,7 +47,7 @@ function applyToModal(modalPath: string, enabledKey: string, dataMethod: string)
     });
 
     // Restart the widget when a submission error occurs.
-    extend(modalPath, 'onerror', function (this: any) {
+    extend(modalPrototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         this.powCaptchaState?.retry();
     });
@@ -55,19 +58,19 @@ function applyToModal(modalPath: string, enabledKey: string, dataMethod: string)
  */
 export default function extendAuthModals(): void {
     applyToModal(
-        'flarum/forum/components/LogInModal',
+        LogInModal.prototype,
         'enabledLogin',
         'loginParams'
     );
 
     applyToModal(
-        'flarum/forum/components/SignUpModal',
+        SignUpModal.prototype,
         'enabledSignup',
         'submitData'
     );
 
     applyToModal(
-        'flarum/forum/components/ForgotPasswordModal',
+        ForgotPasswordModal.prototype,
         'enabledForgot',
         'requestParams'
     );
