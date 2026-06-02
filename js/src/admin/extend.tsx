@@ -1,14 +1,17 @@
 import app from 'flarum/admin/app';
 
 export default function registerSettings(): void {
-    const appWithRegistries = app as unknown as {
+    const appWithSettingsApi = app as unknown as {
         registry?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
         extensionData?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
     };
 
-    const settingsRegistry = appWithRegistries.registry ?? appWithRegistries.extensionData;
+    const settingsRegistry = [appWithSettingsApi.registry, appWithSettingsApi.extensionData].find(
+        (candidate): candidate is { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } } =>
+            Boolean(candidate && typeof candidate.for === 'function')
+    );
 
-    if (!settingsRegistry || typeof settingsRegistry.for !== 'function') {
+    if (!settingsRegistry) {
         return;
     }
 
