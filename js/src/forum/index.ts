@@ -1,3 +1,6 @@
+import app from 'flarum/forum/app';
 import extendAuthModals from './extendAuthModals';
 
-extendAuthModals();
+app.initializers.add('peopleinside-fla-powcaptcha', () => {
+    extendAuthModals();
+});
