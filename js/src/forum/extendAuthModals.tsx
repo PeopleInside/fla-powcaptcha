@@ -21,7 +21,14 @@ function isEnabled(key: string): boolean {
  * @param enabledKey  Forum-attribute key that controls whether CAPTCHA is active.
  * @param dataMethod  Name of the method that builds the POST body.
  */
-type ModalClass = { prototype: Record<string, unknown> };
+type ModalPrototype = {
+    oninit?: (...args: any[]) => void;
+    fields?: (...args: any[]) => void;
+    onerror?: (...args: any[]) => void;
+    [key: string]: any;
+};
+
+type ModalClass = { prototype: ModalPrototype };
 
 function applyToModal(modalClass: ModalClass, enabledKey: string, dataMethod: string): void {
     const prototype = modalClass.prototype;
