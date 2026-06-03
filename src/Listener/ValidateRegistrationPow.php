@@ -4,8 +4,8 @@ namespace PeopleInside\PowCaptcha\Listener;
 
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving;
-use Illuminate\Support\Arr;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
+use PeopleInside\PowCaptcha\Support\CaptchaTokenExtractor;
 
 /**
  * Validates the PoW token during user registration (User\Event\Saving).
@@ -36,11 +36,11 @@ class ValidateRegistrationPow
             return;
         }
 
-        // Support both Flarum 1.x (flat body) and 2.x (JSON:API body) registration flows.
-        $token = Arr::get($event->data, 'captchaToken')
-            ?? Arr::get($event->data, 'attributes.captchaToken')
-            ?? Arr::get($event->data, 'data.attributes.captchaToken')
-            ?? '';
+        if (CaptchaTokenExtractor::usesOAuthRegistrationToken($event->data)) {
+            return;
+        }
+
+        $token = CaptchaTokenExtractor::fromRegistrationData($event->data);
         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
 
         if (!is_string($token) || !$this->tokenVerifier->verifyToken($token, $difficulty)) {

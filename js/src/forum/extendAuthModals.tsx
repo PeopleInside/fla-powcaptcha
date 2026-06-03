@@ -1,7 +1,12 @@
 import app from 'flarum/forum/app';
-import { extend } from 'flarum/common/extend';
+import { extend, override } from 'flarum/common/extend';
+import LogInModal from 'flarum/forum/components/LogInModal';
+import SignUpModal from 'flarum/forum/components/SignUpModal';
+import ForgotPasswordModal from 'flarum/forum/components/ForgotPasswordModal';
 import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState from './states/PowCaptchaState';
+
+type AuthModal = typeof LogInModal | typeof SignUpModal | typeof ForgotPasswordModal;
 
 /**
  * Whether a given form type has CAPTCHA enabled (setting serialised to the
@@ -11,29 +16,39 @@ function isEnabled(key: string): boolean {
     return !!app.forum.attribute<boolean>('peopleinside-powcaptcha.' + key);
 }
 
+function captchaNotSolved(state: PowCaptchaState | undefined): boolean {
+    return !!state && state.getStatus() !== 'solved';
+}
+
 /**
- * Extend a modal with the PoW CAPTCHA widget.
+ * Extend an auth modal with the PoW CAPTCHA widget.
  *
- * @param modulePath  Lazy-module path of the Flarum modal component.
- * @param enabledKey  Forum-attribute key that controls whether CAPTCHA is active.
- * @param dataMethod  Name of the method that builds the POST body.
+ * Uses concrete modal classes so the same bundle works on Flarum 1.8 (extend
+ * requires a prototype) and Flarum 2.x (lazy registry paths are optional).
  */
-function applyToModal(modalPath: string, enabledKey: string, dataMethod: string): void {
-    // Create the state object when the modal is initialised.
-    extend(modalPath, 'oninit', function (this: any) {
+function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string): void {
+    const prototype = modal.prototype;
+    const skipCaptcha = modal === SignUpModal
+        ? function (this: any) {
+              return !!this.attrs?.token;
+          }
+        : () => false;
+
+    extend(prototype, 'oninit', function (this: any) {
         if (!isEnabled(enabledKey)) return;
+        if (skipCaptcha.call(this)) return;
         this.powCaptchaState = new PowCaptchaState();
     });
 
-    // Inject the token into the request payload.
-    extend(modalPath, dataMethod, function (this: any, data: Record<string, unknown>) {
+    extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
         if (!isEnabled(enabledKey)) return;
+        if (skipCaptcha.call(this)) return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
     });
 
-    // Add the widget to the form's field list (just above the submit button).
-    extend(modalPath, 'fields', function (this: any, items: any) {
+    extend(prototype, 'fields', function (this: any, items: any) {
         if (!isEnabled(enabledKey)) return;
+        if (skipCaptcha.call(this)) return;
         if (!this.powCaptchaState) return;
 
         items.add(
@@ -43,10 +58,23 @@ function applyToModal(modalPath: string, enabledKey: string, dataMethod: string)
         );
     });
 
-    // Restart the widget when a submission error occurs.
-    extend(modalPath, 'onerror', function (this: any) {
+    extend(prototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         this.powCaptchaState?.retry();
+    });
+
+    override(prototype, 'onsubmit', function (this: any, original: (e: SubmitEvent) => void, e: SubmitEvent) {
+        if (skipCaptcha.call(this)) {
+            return original.call(this, e);
+        }
+
+        if (isEnabled(enabledKey) && captchaNotSolved(this.powCaptchaState)) {
+            e.preventDefault();
+            void this.powCaptchaState?.start();
+            return;
+        }
+
+        return original.call(this, e);
     });
 }
 
@@ -54,21 +82,7 @@ function applyToModal(modalPath: string, enabledKey: string, dataMethod: string)
  * Wire up the PoW CAPTCHA to all three auth modals.
  */
 export default function extendAuthModals(): void {
-    applyToModal(
-        'flarum/forum/components/LogInModal',
-        'enabledLogin',
-        'loginParams'
-    );
-
-    applyToModal(
-        'flarum/forum/components/SignUpModal',
-        'enabledSignup',
-        'submitData'
-    );
-
-    applyToModal(
-        'flarum/forum/components/ForgotPasswordModal',
-        'enabledForgot',
-        'requestParams'
-    );
+    applyToModal(LogInModal, 'enabledLogin', 'loginParams');
+    applyToModal(SignUpModal, 'enabledSignup', 'submitData');
+    applyToModal(ForgotPasswordModal, 'enabledForgot', 'requestParams');
 }
