@@ -29,7 +29,7 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 | Dependency | Version |
 |------------|---------|
 | PHP        | ≥ 8.1   |
-| Flarum     | ^1.0 or ^2.0 |
+| Flarum     | ^1.8 or ^2.0 |
 
 ## Screenshot
 <img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
@@ -75,7 +75,16 @@ Go to **Admin → Extensions → PoW CAPTCHA** and choose:
 
 ## Development (for contributors only)
 
-The extension is distributed with pre-compiled frontend assets (`js/dist/*`), so **no JS build step is required** to install or use it.
+The extension is distributed with pre-compiled frontend assets (`js/dist/*`), so **no JS build step is required** to install or use it on Flarum 2.x.
+
+After upgrading from an older release on **Flarum 1.8**, rebuild the forum bundle so auth modals are extended correctly:
+
+```bash
+cd vendor/peopleinside/fla-powcaptcha/js
+npm install
+npm run build
+php flarum cache:clear
+```
 
 ## Security Notes
 
