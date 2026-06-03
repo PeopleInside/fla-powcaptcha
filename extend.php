@@ -3,12 +3,12 @@
 use Flarum\Extend;
 use Flarum\Forum\LogInValidator;
 use Flarum\Api\ForgotPasswordValidator;
-use Flarum\User\Event\Saving as UserSaving;
+use PeopleInside\PowCaptcha\Api\RegisterUserCaptchaFields;
 use PeopleInside\PowCaptcha\Controller\PowCaptchaChallengeController;
 use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
 
-return [
+$extenders = [
     // ── Frontend assets ────────────────────────────────────────────────
     (new Extend\Frontend('forum'))
         ->js(__DIR__ . '/js/dist/forum.js')
@@ -42,7 +42,16 @@ return [
     (new Extend\Validator(ForgotPasswordValidator::class))
         ->configure(AddPowValidatorRule::class),
 
-    // ── Event listener: registration (User\Event\Saving) ──────────────
-    (new Extend\Event())
-        ->listen(UserSaving::class, ValidateRegistrationPow::class),
 ];
+
+// Flarum 2.x: register captchaToken on the User JSON:API resource.
+if (class_exists(\Flarum\Extend\ApiResource::class) && class_exists(\Flarum\Api\Resource\UserResource::class)) {
+    $extenders[] = (new Extend\ApiResource(\Flarum\Api\Resource\UserResource::class))
+        ->fields(RegisterUserCaptchaFields::class);
+} else {
+    // Flarum 1.x: validate during User\Event\Saving (before core validation).
+    $extenders[] = (new Extend\Event())
+        ->listen(\Flarum\User\Event\Saving::class, ValidateRegistrationPow::class);
+}
+
+return $extenders;
