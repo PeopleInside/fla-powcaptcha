@@ -31,6 +31,9 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 | PHP        | ≥ 8.1   |
 | Flarum     | ^1.8 or ^2.0 |
 
+For Flarum 1.8 use the version 2.3
+The future will be Flarum 2.0 that support the latest release.
+
 ## Screenshot
 <img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
 <img width="376" height="468" alt="1778785001-133386-screenshot-2026-05-14-205627" src="https://github.com/user-attachments/assets/ad1bd396-e5de-4acf-9b7b-4c5ea817c89d" />
