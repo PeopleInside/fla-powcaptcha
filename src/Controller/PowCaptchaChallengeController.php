@@ -7,6 +7,7 @@ use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
+use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -20,7 +21,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly RateLimiter $rateLimiter
+        private readonly RateLimiter $rateLimiter,
+        private readonly PowTokenVerifier $tokenVerifier
     ) {
     }
 
@@ -41,10 +43,12 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
         );
 
-        // Store the challenge so the server can verify it later.
+        $ip = IpDetector::detect($request);
+
+        // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
         $this->cache->put(
-            PowTokenVerifier::CHALLENGE_CACHE_PREFIX . $challenge,
-            true,
+            $this->tokenVerifier->getChallengeCacheKey($challenge),
+            sha1($ip),
             self::CHALLENGE_TTL_SECONDS
         );
 
@@ -76,11 +80,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $ipAddress = $request->getAttribute('ipAddress');
-
-        if (!is_string($ipAddress) || $ipAddress === '') {
-            $ipAddress = (string) ($request->getServerParams()['REMOTE_ADDR'] ?? '');
-        }
+        $ipAddress = IpDetector::detect($request);
 
         if ($ipAddress === '') {
             return null;
