@@ -42,23 +42,11 @@ This software is provided **"AS IS"**, without any warranty. While it has been t
 
 **You use this software entirely at your own risk.** The authors and contributors are not liable for any damages, data loss, or unexpected behavior resulting from its use, modification, or distribution. Always review and test the code independently before deploying it in critical or production environments.
 
-## Installation for Flarum 2.x
+## Installation
 
 ```bash
 composer require peopleinside/fla-powcaptcha
 ```
-
-<details>
-<summary>For Flarum 1.8 use the version 2.3</summary>
-
-The future will be Flarum 2.0 that support the latest release.
-
-Install with 
-
-```bash
-composer require peopleinside/fla-powcaptcha:2.3
-```
-</details>
 
 ## Update
 
