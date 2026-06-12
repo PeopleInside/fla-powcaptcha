@@ -1,8 +1,8 @@
-import { Admin } from 'flarum/common/extenders';
+import Extend from 'flarum/common/extenders';
 import app from 'flarum/admin/app';
 
 export default [
-    new Admin()
+    new Extend.Admin()
         .setting(
             () => ({
                 setting: 'peopleinside-powcaptcha.enabled_login',
