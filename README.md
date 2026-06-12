@@ -33,6 +33,10 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 
 For Flarum 1.8 use the version 2.3
 The future will be Flarum 2.0 that support the latest release.
+Install with 
+```bash
+composer require peopleinside/fla-powcaptcha:2.3
+```
 
 ## Screenshot
 <img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
