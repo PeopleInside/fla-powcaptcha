@@ -48,6 +48,18 @@ This software is provided **"AS IS"**, without any warranty. While it has been t
 composer require peopleinside/fla-powcaptcha
 ```
 
+<details>
+<summary>For Flarum 1.8 use the version 2.3</summary>
+
+The future will be Flarum 2.0 that support the latest release.
+
+Install with 
+
+```bash
+composer require peopleinside/fla-powcaptcha:2.3
+```
+</details>
+
 ## Update
 
 ```bash
