@@ -29,7 +29,7 @@ class RegisterUserCaptchaFields
                 ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
                 ->required(fn (Context $context) => $this->shouldValidate($context))
                 ->rule(
-                    function (Context $context) {
+                    function (Context $context, ?User $user) {
                         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
 
                         return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty): void {
@@ -40,6 +40,9 @@ class RegisterUserCaptchaFields
                     },
                     fn (Context $context) => $this->shouldValidate($context)
                 )
+                ->validationMessages([
+                    'captchaToken' => $this->validationMessage(),
+                ])
                 ->save(fn () => null),
         ];
     }
