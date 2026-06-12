@@ -109,11 +109,45 @@ export default class PowCaptchaState {
         const startedAt = Date.now();
         const normalizedDifficulty = Math.max(1, Math.min(8, difficulty));
 
-        for (let nonce = 0; nonce < PowCaptchaState.MAX_SOLVE_ATTEMPTS; nonce++) {
+        // Dynamically adjust solve attempt limits and maximum duration based on difficulty.
+        // This ensures users on slow, old or power-constrained mobile devices don't see
+        // their captcha solve process timeout unexpectedly on higher levels.
+        let maxAttempts = PowCaptchaState.MAX_SOLVE_ATTEMPTS;
+        let maxDuration = PowCaptchaState.MAX_SOLVE_DURATION_MS;
+
+        if (normalizedDifficulty <= 2) {
+            maxAttempts = 500_000;
+            maxDuration = 10_000; // 10s is plenty for level 1-2
+        } else if (normalizedDifficulty === 3) {
+            maxAttempts = 2_000_000;
+            maxDuration = 20_000; // 20s for standard level
+        } else if (normalizedDifficulty === 4) {
+            maxAttempts = 10_000_000;
+            maxDuration = 60_000; // 1m for hard level
+        } else if (normalizedDifficulty === 5) {
+            maxAttempts = 35_000_000;
+            maxDuration = 180_000; // 3m for very hard level
+        } else {
+            // Difficulty levels 6, 7 or 8 (developer customized overrides)
+            maxAttempts = 100_000_000;
+            maxDuration = 300_000; // 5m max override
+        }
+
+        let lastYieldAt = Date.now();
+
+        for (let nonce = 0; nonce < maxAttempts; nonce++) {
             if (this.aborted) throw new Error('aborted');
 
-            if (Date.now() - startedAt > PowCaptchaState.MAX_SOLVE_DURATION_MS) {
-                throw new Error('challenge solve timeout');
+            // Yield periodically to keep UI responsive without adding nested setTimeout slop/throttling.
+            if (nonce % 4096 === 0) {
+                const now = Date.now();
+                if (now - startedAt > maxDuration) {
+                    throw new Error('challenge solve timeout');
+                }
+                if (now - lastYieldAt > 32) { // Yield only if CPU has been locked for > 32ms
+                    await new Promise<void>((r) => setTimeout(r, 0));
+                    lastYieldAt = Date.now();
+                }
             }
 
             const data = encoder.encode(challengePrefix + nonce);
@@ -122,11 +156,6 @@ export default class PowCaptchaState {
 
             if (this.meetsHashDifficulty(hashBytes, normalizedDifficulty)) {
                 return `${challenge}:${nonce}`;
-            }
-
-            // Yield periodically to keep the UI responsive.
-            if (nonce % PowCaptchaState.SOLVE_YIELD_INTERVAL === 0) {
-                await new Promise<void>((r) => setTimeout(r, 0));
             }
         }
 
