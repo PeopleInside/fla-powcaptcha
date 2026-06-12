@@ -47,14 +47,27 @@ class AddPowValidatorRule
         if ($flarumValidator instanceof LogInValidator
             && $this->settings->get('peopleinside-powcaptcha.enabled_login', true)
         ) {
-            $laravelValidator->addRules(['captchaToken' => ['required', 'pow_captcha']]);
+            $this->appendCaptchaRules($laravelValidator);
         }
 
         if ($flarumValidator instanceof ForgotPasswordValidator
             && $this->settings->get('peopleinside-powcaptcha.enabled_forgot', true)
         ) {
-            $laravelValidator->addRules(['captchaToken' => ['required', 'pow_captcha']]);
+            $this->appendCaptchaRules($laravelValidator);
         }
+    }
+
+    private function appendCaptchaRules(Validator $laravelValidator): void
+    {
+        $rules = ['captchaToken' => ['required', 'pow_captcha']];
+
+        if (method_exists($laravelValidator, 'appendRules')) {
+            $laravelValidator->appendRules($rules);
+
+            return;
+        }
+
+        $laravelValidator->addRules($rules);
     }
 
     private function resolveValidationMessage(): string
