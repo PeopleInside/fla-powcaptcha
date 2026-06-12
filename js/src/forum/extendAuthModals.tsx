@@ -7,19 +7,6 @@ import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState from './states/PowCaptchaState';
 
 type AuthModal = typeof LogInModal | typeof SignUpModal | typeof ForgotPasswordModal;
-type ExtendTarget = object | string;
-
-/**
- * Flarum 2.x turns `flarum/*` imports into lazy registry paths (strings).
- * Flarum 1.8 resolves them to class constructors and extend() needs `.prototype`.
- */
-function resolveExtendTarget(modal: AuthModal | string): ExtendTarget {
-    if (typeof modal === 'string') {
-        return modal;
-    }
-
-    return modal.prototype;
-}
 
 /**
  * Whether a given form type has CAPTCHA enabled (setting serialised to the
@@ -35,33 +22,31 @@ function captchaNotSolved(state: PowCaptchaState | undefined): boolean {
 
 /**
  * Extend an auth modal with the PoW CAPTCHA widget.
+ *
+ * Uses concrete modal classes so the same bundle works on Flarum 1.8 (extend
+ * requires a prototype) and Flarum 2.x (lazy registry paths are optional).
  */
-function applyToModal(
-    modal: AuthModal | string,
-    enabledKey: string,
-    dataMethod: string,
-    isSignUp: boolean
-): void {
-    const target = resolveExtendTarget(modal);
-    const skipCaptcha = isSignUp
+function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string): void {
+    const prototype = modal.prototype;
+    const skipCaptcha = modal === SignUpModal
         ? function (this: any) {
               return !!this.attrs?.token;
           }
         : () => false;
 
-    extend(target, 'oninit', function (this: any) {
+    extend(prototype, 'oninit', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         this.powCaptchaState = new PowCaptchaState();
     });
 
-    extend(target, dataMethod, function (this: any, data: Record<string, unknown>) {
+    extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
     });
 
-    extend(target, 'fields', function (this: any, items: any) {
+    extend(prototype, 'fields', function (this: any, items: any) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         if (!this.powCaptchaState) return;
@@ -73,12 +58,12 @@ function applyToModal(
         );
     });
 
-    extend(target, 'onerror', function (this: any) {
+    extend(prototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         this.powCaptchaState?.retry();
     });
 
-    override(target, 'onsubmit', function (this: any, original: (e: SubmitEvent) => void, e: SubmitEvent) {
+    override(prototype, 'onsubmit', function (this: any, original: (e: SubmitEvent) => void, e: SubmitEvent) {
         if (skipCaptcha.call(this)) {
             return original.call(this, e);
         }
@@ -97,7 +82,7 @@ function applyToModal(
  * Wire up the PoW CAPTCHA to all three auth modals.
  */
 export default function extendAuthModals(): void {
-    applyToModal(LogInModal, 'enabledLogin', 'loginParams', false);
-    applyToModal(SignUpModal, 'enabledSignup', 'submitData', true);
-    applyToModal(ForgotPasswordModal, 'enabledForgot', 'requestParams', false);
+    applyToModal(LogInModal, 'enabledLogin', 'loginParams');
+    applyToModal(SignUpModal, 'enabledSignup', 'submitData');
+    applyToModal(ForgotPasswordModal, 'enabledForgot', 'requestParams');
 }
