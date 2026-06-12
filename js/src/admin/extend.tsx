@@ -41,7 +41,6 @@ export default [
                     '4': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_4') as string,
                     '5': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_5') as string,
                 },
-                default: '3',
                 label: app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_label'),
                 help: app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_help'),
             }),
