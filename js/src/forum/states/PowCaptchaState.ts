@@ -1,4 +1,5 @@
 import app from 'flarum/forum/app';
+import { sha256 } from 'js-sha256';
 
 declare const m: any;
 
@@ -116,22 +117,24 @@ export default class PowCaptchaState {
      * Brute-force a nonce N such that SHA-256(`${challenge}:${N}`) starts with
      * `difficulty` hex zeros.
      *
-     * We use the Web Crypto API (available in all modern browsers) and yield
-     * back to the event loop optionally to keep the UI responsive.
+     * We use a synchronous pure-JS sha256 library to maximize performance
+     * and avoid excessive asynchronous microtask overhead in the loop,
+     * while yielding occasionally to keep the browser UI responsive.
      */
     private async solve(challenge: string, difficulty: number): Promise<string> {
-        const encoder = new TextEncoder();
         const prefix = `${challenge}:`;
         const startedAt = Date.now();
         const normalizedDiff = Math.max(1, Math.min(8, difficulty));
         const { maxAttempts, maxDuration } = this.getSolveLimits(normalizedDiff);
+        const requiredPrefix = '0'.repeat(normalizedDiff);
 
         let lastYieldAt = Date.now();
 
         for (let nonce = 0; nonce < maxAttempts; nonce++) {
             if (this.aborted) throw new Error('aborted');
 
-            if (nonce % 4096 === 0) {
+            // Yield periodically to prevent blocking the UI
+            if (nonce % 16384 === 0) {
                 const now = Date.now();
                 if (now - startedAt > maxDuration) {
                     throw new Error('challenge solve timeout');
@@ -142,32 +145,12 @@ export default class PowCaptchaState {
                 }
             }
 
-            const data = encoder.encode(prefix + nonce);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-
-            if (this.meetsHashDifficulty(new Uint8Array(hashBuffer), normalizedDiff)) {
+            const hashHex = sha256(prefix + nonce);
+            if (hashHex.startsWith(requiredPrefix)) {
                 return `${challenge}:${nonce}`;
             }
         }
 
         throw new Error('challenge solve iteration limit reached');
-    }
-
-    private meetsHashDifficulty(hashBytes: Uint8Array, difficulty: number): boolean {
-        // Difficulty is measured in leading zero hex chars (nibbles).
-        const requiredFullZeroBytes = Math.floor(difficulty / 2);
-
-        for (let byteIndex = 0; byteIndex < requiredFullZeroBytes; byteIndex++) {
-            if (hashBytes[byteIndex] !== 0) {
-                return false;
-            }
-        }
-
-        if (difficulty % 2 === 1) {
-            // Odd difficulty needs one extra zero nibble (high 4 bits).
-            return (hashBytes[requiredFullZeroBytes] & 0xf0) === 0;
-        }
-
-        return true;
     }
 }

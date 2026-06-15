@@ -4,7 +4,6 @@ namespace PeopleInside\PowCaptcha\Service;
 
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Contracts\Container\Container;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -15,8 +14,7 @@ class PowTokenVerifier
 
     public function __construct(
         private readonly CacheRepository $cache,
-        private readonly SettingsRepositoryInterface $settings,
-        private readonly Container $container
+        private readonly SettingsRepositoryInterface $settings
     ) {
     }
 
@@ -65,11 +63,15 @@ class PowTokenVerifier
     private function getUniqueInstancePrefix(): string
     {
         $configHash = '';
-        if ($this->container->bound('flarum.config')) {
-            $config = $this->container->make('flarum.config');
-            if (is_array($config)) {
-                $uniqueString = ($config['url'] ?? '') . ':' . ($config['database']['database'] ?? '');
-                $configHash = hash('sha256', $uniqueString);
+        if (function_exists('resolve')) {
+            try {
+                $config = resolve('flarum.config');
+                if (is_array($config) || $config instanceof \ArrayAccess) {
+                    $uniqueString = ($config['url'] ?? '') . ':' . ($config['database']['database'] ?? '');
+                    $configHash = hash('sha256', $uniqueString);
+                }
+            } catch (\Throwable) {
+                // Fail silently and fallback to default
             }
         }
 
@@ -85,11 +87,15 @@ class PowTokenVerifier
     private function getCurrentRequestIp(): string
     {
         $ipAddress = '';
-        if ($this->container->bound(ServerRequestInterface::class)) {
-            $request = $this->container->make(ServerRequestInterface::class);
-            if ($request instanceof ServerRequestInterface) {
-                $config = $this->container->bound('flarum.config') ? $this->container->make('flarum.config') : null;
-                $ipAddress = IpDetector::detect($request, $config);
+        if (function_exists('resolve')) {
+            try {
+                $request = resolve(ServerRequestInterface::class);
+                if ($request instanceof ServerRequestInterface) {
+                    $config = resolve('flarum.config');
+                    $ipAddress = IpDetector::detect($request, is_array($config) || $config instanceof \ArrayAccess ? $config : null);
+                }
+            } catch (\Throwable) {
+                // Fail silently and fallback to REMOTE_ADDR
             }
         }
 
