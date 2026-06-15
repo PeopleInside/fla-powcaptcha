@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
-// `m` is a UMD global provided by Flarum core (mithril), no local import needed.
+
+declare const m: any;
 
 export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
 
@@ -12,12 +13,10 @@ export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
  *   solved/error ──► idle  (after reset())
  */
 export default class PowCaptchaState {
-    private static readonly SOLVE_YIELD_INTERVAL = 1024;
-    private static readonly MAX_SOLVE_ATTEMPTS = 2_000_000;
-    private static readonly MAX_SOLVE_DURATION_MS = 15_000;
-
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
+    public isSubmitQueued = false;
+    public onSolvedCallback?: () => void;
 
     private token: string | null = null;
     private aborted = false;
@@ -47,10 +46,15 @@ export default class PowCaptchaState {
             this.token = solution;
             this.status = 'solved';
             m.redraw();
+
+            if (this.onSolvedCallback) {
+                this.onSolvedCallback();
+            }
         } catch (err: any) {
             if (this.aborted) return;
             this.status = 'error';
             this.errorMessage = err?.message ?? String(err);
+            this.isSubmitQueued = false;
             m.redraw();
         }
     }
@@ -70,6 +74,7 @@ export default class PowCaptchaState {
         this.status = 'idle';
         this.token = null;
         this.errorMessage = null;
+        this.isSubmitQueued = false;
         m.redraw();
     }
 
@@ -85,15 +90,26 @@ export default class PowCaptchaState {
         const apiUrl = (app.forum.attribute<string>('apiUrl') as string) || '/api';
         const url = apiUrl.replace(/\/$/, '') + '/powcaptcha/challenge';
 
-        const response = await fetch(url, {
-            headers: { Accept: 'application/json' },
+        return app.request<{ challenge: string; difficulty: number }>({
+            method: 'GET',
+            url: url,
         });
+    }
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+    private getSolveLimits(difficulty: number): { maxAttempts: number; maxDuration: number } {
+        if (difficulty <= 2) {
+            return { maxAttempts: 500_000, maxDuration: 15_000 };
         }
-
-        return response.json() as Promise<{ challenge: string; difficulty: number }>;
+        if (difficulty === 3) {
+            return { maxAttempts: 3_000_000, maxDuration: 45_000 };
+        }
+        if (difficulty === 4) {
+            return { maxAttempts: 15_000_000, maxDuration: 120_000 };
+        }
+        if (difficulty === 5) {
+            return { maxAttempts: 45_000_000, maxDuration: 300_000 };
+        }
+        return { maxAttempts: 100_000_000, maxDuration: 600_000 };
     }
 
     /**
@@ -101,60 +117,35 @@ export default class PowCaptchaState {
      * `difficulty` hex zeros.
      *
      * We use the Web Crypto API (available in all modern browsers) and yield
-     * back to the event loop every 200 iterations to keep the UI responsive.
+     * back to the event loop optionally to keep the UI responsive.
      */
     private async solve(challenge: string, difficulty: number): Promise<string> {
         const encoder = new TextEncoder();
-        const challengePrefix = `${challenge}:`;
+        const prefix = `${challenge}:`;
         const startedAt = Date.now();
-        const normalizedDifficulty = Math.max(1, Math.min(8, difficulty));
-
-        // Dynamically adjust solve attempt limits and maximum duration based on difficulty.
-        // This ensures users on slow, old or power-constrained mobile devices don't see
-        // their captcha solve process timeout unexpectedly on higher levels.
-        let maxAttempts = PowCaptchaState.MAX_SOLVE_ATTEMPTS;
-        let maxDuration = PowCaptchaState.MAX_SOLVE_DURATION_MS;
-
-        if (normalizedDifficulty <= 2) {
-            maxAttempts = 500_000;
-            maxDuration = 10_000; // 10s is plenty for level 1-2
-        } else if (normalizedDifficulty === 3) {
-            maxAttempts = 2_000_000;
-            maxDuration = 20_000; // 20s for standard level
-        } else if (normalizedDifficulty === 4) {
-            maxAttempts = 10_000_000;
-            maxDuration = 60_000; // 1m for hard level
-        } else if (normalizedDifficulty === 5) {
-            maxAttempts = 35_000_000;
-            maxDuration = 180_000; // 3m for very hard level
-        } else {
-            // Difficulty levels 6, 7 or 8 (developer customized overrides)
-            maxAttempts = 100_000_000;
-            maxDuration = 300_000; // 5m max override
-        }
+        const normalizedDiff = Math.max(1, Math.min(8, difficulty));
+        const { maxAttempts, maxDuration } = this.getSolveLimits(normalizedDiff);
 
         let lastYieldAt = Date.now();
 
         for (let nonce = 0; nonce < maxAttempts; nonce++) {
             if (this.aborted) throw new Error('aborted');
 
-            // Yield periodically to keep UI responsive without adding nested setTimeout slop/throttling.
             if (nonce % 4096 === 0) {
                 const now = Date.now();
                 if (now - startedAt > maxDuration) {
                     throw new Error('challenge solve timeout');
                 }
-                if (now - lastYieldAt > 32) { // Yield only if CPU has been locked for > 32ms
+                if (now - lastYieldAt > 32) {
                     await new Promise<void>((r) => setTimeout(r, 0));
                     lastYieldAt = Date.now();
                 }
             }
 
-            const data = encoder.encode(challengePrefix + nonce);
+            const data = encoder.encode(prefix + nonce);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashBytes = new Uint8Array(hashBuffer);
 
-            if (this.meetsHashDifficulty(hashBytes, normalizedDifficulty)) {
+            if (this.meetsHashDifficulty(new Uint8Array(hashBuffer), normalizedDiff)) {
                 return `${challenge}:${nonce}`;
             }
         }

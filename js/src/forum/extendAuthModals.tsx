@@ -6,6 +6,8 @@ import ForgotPasswordModal from 'flarum/forum/components/ForgotPasswordModal';
 import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState from './states/PowCaptchaState';
 
+declare const m: any;
+
 type AuthModal = typeof LogInModal | typeof SignUpModal | typeof ForgotPasswordModal;
 
 /**
@@ -38,6 +40,15 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         this.powCaptchaState = new PowCaptchaState();
+        this.powCaptchaState.onSolvedCallback = () => {
+            if (this.powCaptchaState?.isSubmitQueued) {
+                this.powCaptchaState.isSubmitQueued = false;
+                const fakeEvent = {
+                    preventDefault: () => {},
+                } as unknown as SubmitEvent;
+                this.onsubmit(fakeEvent);
+            }
+        };
     });
 
     extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
@@ -70,7 +81,11 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
 
         if (isEnabled(enabledKey) && captchaNotSolved(this.powCaptchaState)) {
             e.preventDefault();
-            void this.powCaptchaState?.start();
+            this.powCaptchaState?.start();
+            if (this.powCaptchaState) {
+                this.powCaptchaState.isSubmitQueued = true;
+            }
+            m.redraw();
             return;
         }
 

@@ -10,7 +10,7 @@ class IpDetector
      * Resolve the client IP safely, taking into account trusted proxy headers
      * only if configured, to prevent IP spoofing / rate limit bypass.
      */
-    public static function detect(ServerRequestInterface $request): string
+    public static function detect(ServerRequestInterface $request, ?array $config = null): string
     {
         $serverParams = $request->getServerParams();
         $remoteAddr = (string) ($serverParams['REMOTE_ADDR'] ?? '');
@@ -18,11 +18,8 @@ class IpDetector
         // If flarum config specifies proxy headers to trust, we can check.
         // Flarum uses config.php 'proxy_headers' or 'proxy_all'.
         $trustProxy = false;
-        if (function_exists('app') && app()->bound('flarum.config')) {
-            $config = app('flarum.config');
-            if (is_array($config) && (!empty($config['proxy_headers']) || !empty($config['proxy_all']))) {
-                $trustProxy = true;
-            }
+        if (is_array($config) && (!empty($config['proxy_headers']) || !empty($config['proxy_all']))) {
+            $trustProxy = true;
         }
 
         // Flarum's native resolved IP attribute
