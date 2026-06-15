@@ -6,6 +6,7 @@ use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
+use Illuminate\Contracts\Container\Container;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ResponseInterface;
@@ -22,7 +23,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
         private readonly RateLimiter $rateLimiter,
-        private readonly PowTokenVerifier $tokenVerifier
+        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly Container $container
     ) {
     }
 
@@ -43,12 +45,13 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
         );
 
-        $ip = IpDetector::detect($request);
+        $config = $this->container->bound('flarum.config') ? $this->container->make('flarum.config') : null;
+        $ip = IpDetector::detect($request, $config);
 
         // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
         $this->cache->put(
             $this->tokenVerifier->getChallengeCacheKey($challenge),
-            sha1($ip),
+            hash('sha256', $ip),
             self::CHALLENGE_TTL_SECONDS
         );
 
@@ -80,12 +83,13 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $ipAddress = IpDetector::detect($request);
+        $config = $this->container->bound('flarum.config') ? $this->container->make('flarum.config') : null;
+        $ipAddress = IpDetector::detect($request, $config);
 
         if ($ipAddress === '') {
             return null;
         }
 
-        return 'powcaptcha:rate:' . sha1($ipAddress);
+        return 'powcaptcha:rate:' . hash('sha256', $ipAddress);
     }
 }

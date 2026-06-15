@@ -17,6 +17,7 @@ peopleinside-powcaptcha:
 
   forum:
     solving: Verifica di sicurezza in corso…
+    submitting: Verifica in corso… completamento automatico del modulo.
     verified: Verifica di sicurezza superata
     error: Verifica di sicurezza fallita. Riprova.
     retry: Riprova
