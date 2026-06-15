@@ -3,7 +3,6 @@
 namespace PeopleInside\PowCaptcha\Controller;
 
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
@@ -21,7 +20,6 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly RateLimiter $rateLimiter,
         private readonly PowTokenVerifier $tokenVerifier
     ) {
     }
@@ -43,12 +41,23 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
         );
 
-        $ip = IpDetector::detect($request);
+        $config = null;
+        if (function_exists('resolve')) {
+            try {
+                $configResolved = resolve('flarum.config');
+                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
+                    $config = $configResolved;
+                }
+            } catch (\Throwable) {
+                // Silently fallback to null
+            }
+        }
+        $ip = IpDetector::detect($request, $config);
 
         // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
         $this->cache->put(
             $this->tokenVerifier->getChallengeCacheKey($challenge),
-            sha1($ip),
+            hash('sha256', $ip),
             self::CHALLENGE_TTL_SECONDS
         );
 
@@ -67,25 +76,55 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             return false;
         }
 
-        if ($this->rateLimiter->tooManyAttempts($rateKey, self::RATE_LIMIT_MAX_REQUESTS)) {
-            $retryAfter = $this->rateLimiter->availableIn($rateKey);
+        $rateData = $this->cache->get($rateKey);
+        $now = time();
 
-            return false;
+        if (is_array($rateData) && isset($rateData['attempts'], $rateData['expires_at'])) {
+            if ($now >= $rateData['expires_at']) {
+                $rateData = [
+                    'attempts' => 1,
+                    'expires_at' => $now + self::RATE_LIMIT_WINDOW_SECONDS
+                ];
+                $this->cache->put($rateKey, $rateData, self::RATE_LIMIT_WINDOW_SECONDS);
+            } else {
+                if ($rateData['attempts'] >= self::RATE_LIMIT_MAX_REQUESTS) {
+                    $retryAfter = $rateData['expires_at'] - $now;
+                    return false;
+                }
+                $rateData['attempts']++;
+                $ttl = $rateData['expires_at'] - $now;
+                $this->cache->put($rateKey, $rateData, max(1, $ttl));
+            }
+        } else {
+            $rateData = [
+                'attempts' => 1,
+                'expires_at' => $now + self::RATE_LIMIT_WINDOW_SECONDS
+            ];
+            $this->cache->put($rateKey, $rateData, self::RATE_LIMIT_WINDOW_SECONDS);
         }
-
-        $this->rateLimiter->hit($rateKey, self::RATE_LIMIT_WINDOW_SECONDS);
 
         return true;
     }
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $ipAddress = IpDetector::detect($request);
+        $config = null;
+        if (function_exists('resolve')) {
+            try {
+                $configResolved = resolve('flarum.config');
+                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
+                    $config = $configResolved;
+                }
+            } catch (\Throwable) {
+                // Silently fallback to null
+            }
+        }
+        $ipAddress = IpDetector::detect($request, $config);
 
         if ($ipAddress === '') {
             return null;
         }
 
-        return 'powcaptcha:rate:' . sha1($ipAddress);
+        return 'powcaptcha:rate:' . hash('sha256', $ipAddress);
     }
 }

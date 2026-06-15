@@ -10,7 +10,7 @@ class IpDetector
      * Resolve the client IP safely, taking into account trusted proxy headers
      * only if configured, to prevent IP spoofing / rate limit bypass.
      */
-    public static function detect(ServerRequestInterface $request): string
+    public static function detect(ServerRequestInterface $request, $config = null): string
     {
         $serverParams = $request->getServerParams();
         $remoteAddr = (string) ($serverParams['REMOTE_ADDR'] ?? '');
@@ -18,9 +18,31 @@ class IpDetector
         // If flarum config specifies proxy headers to trust, we can check.
         // Flarum uses config.php 'proxy_headers' or 'proxy_all'.
         $trustProxy = false;
-        if (function_exists('app') && app()->bound('flarum.config')) {
-            $config = app('flarum.config');
-            if (is_array($config) && (!empty($config['proxy_headers']) || !empty($config['proxy_all']))) {
+        if (!empty($config)) {
+            $proxyHeaders = null;
+            $proxyAll = null;
+            if (is_array($config) || $config instanceof \ArrayAccess) {
+                $proxyHeaders = $config['proxy_headers'] ?? null;
+                $proxyAll = $config['proxy_all'] ?? null;
+            } elseif (is_object($config)) {
+                if (method_exists($config, 'get')) {
+                    try {
+                        $proxyHeaders = $config->get('proxy_headers');
+                        $proxyAll = $config->get('proxy_all');
+                    } catch (\Throwable) {
+                        try {
+                            $proxyHeaders = $config->proxy_headers ?? null;
+                            $proxyAll = $config->proxy_all ?? null;
+                        } catch (\Throwable) {}
+                    }
+                } else {
+                    try {
+                        $proxyHeaders = $config->proxy_headers ?? null;
+                        $proxyAll = $config->proxy_all ?? null;
+                    } catch (\Throwable) {}
+                }
+            }
+            if (!empty($proxyHeaders) || !empty($proxyAll)) {
                 $trustProxy = true;
             }
         }
