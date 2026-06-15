@@ -18,6 +18,7 @@ export default class PowCaptchaState {
     public errorMessage: string | null = null;
     public isSubmitQueued = false;
     public onSolvedCallback?: () => void;
+    public onFailedCallback?: () => void;
 
     private token: string | null = null;
     private aborted = false;
@@ -57,6 +58,9 @@ export default class PowCaptchaState {
             this.errorMessage = err?.message ?? String(err);
             this.isSubmitQueued = false;
             m.redraw();
+            if (this.onFailedCallback) {
+                this.onFailedCallback();
+            }
         }
     }
 
