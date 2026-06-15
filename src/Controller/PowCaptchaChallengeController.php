@@ -6,7 +6,6 @@ use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
-use Illuminate\Contracts\Container\Container;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ResponseInterface;
@@ -23,8 +22,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
         private readonly RateLimiter $rateLimiter,
-        private readonly PowTokenVerifier $tokenVerifier,
-        private readonly Container $container
+        private readonly PowTokenVerifier $tokenVerifier
     ) {
     }
 
@@ -45,7 +43,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
         );
 
-        $config = $this->container->bound('flarum.config') ? $this->container->make('flarum.config') : null;
+        $configResolved = function_exists('resolve') ? resolve('flarum.config') : null;
+        $config = is_array($configResolved) || $configResolved instanceof \ArrayAccess ? $configResolved : null;
         $ip = IpDetector::detect($request, $config);
 
         // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
@@ -83,7 +82,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $config = $this->container->bound('flarum.config') ? $this->container->make('flarum.config') : null;
+        $configResolved = function_exists('resolve') ? resolve('flarum.config') : null;
+        $config = is_array($configResolved) || $configResolved instanceof \ArrayAccess ? $configResolved : null;
         $ipAddress = IpDetector::detect($request, $config);
 
         if ($ipAddress === '') {
