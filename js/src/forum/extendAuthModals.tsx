@@ -49,6 +49,12 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
                 this.onsubmit(fakeEvent);
             }
         };
+        this.powCaptchaState.onFailedCallback = () => {
+            if (this.loading) {
+                this.loading = false;
+                m.redraw();
+            }
+        };
     });
 
     extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
@@ -66,12 +72,15 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
             'pow-captcha',
             <PowCaptchaWidget state={this.powCaptchaState} />,
             -5
-        );
+         );
     });
 
     extend(prototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
-        this.powCaptchaState?.retry();
+        const status = this.powCaptchaState?.getStatus();
+        if (status === 'solved' || status === 'error') {
+            this.powCaptchaState?.retry();
+        }
     });
 
     override(prototype, 'onsubmit', function (this: any, original: (e: SubmitEvent) => void, e: SubmitEvent) {
@@ -85,6 +94,7 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
             if (this.powCaptchaState) {
                 this.powCaptchaState.isSubmitQueued = true;
             }
+            this.loading = true;
             m.redraw();
             return;
         }
