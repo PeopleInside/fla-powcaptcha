@@ -43,8 +43,17 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
             (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
         );
 
-        $configResolved = function_exists('resolve') ? resolve('flarum.config') : null;
-        $config = is_array($configResolved) || $configResolved instanceof \ArrayAccess ? $configResolved : null;
+        $config = null;
+        if (function_exists('resolve')) {
+            try {
+                $configResolved = resolve('flarum.config');
+                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
+                    $config = $configResolved;
+                }
+            } catch (\Throwable) {
+                // Silently fallback to null
+            }
+        }
         $ip = IpDetector::detect($request, $config);
 
         // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
@@ -82,8 +91,17 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $configResolved = function_exists('resolve') ? resolve('flarum.config') : null;
-        $config = is_array($configResolved) || $configResolved instanceof \ArrayAccess ? $configResolved : null;
+        $config = null;
+        if (function_exists('resolve')) {
+            try {
+                $configResolved = resolve('flarum.config');
+                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
+                    $config = $configResolved;
+                }
+            } catch (\Throwable) {
+                // Silently fallback to null
+            }
+        }
         $ipAddress = IpDetector::detect($request, $config);
 
         if ($ipAddress === '') {
