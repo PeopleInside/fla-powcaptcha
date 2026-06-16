@@ -43,11 +43,7 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
         $difficultyVal = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
 
-        if ($difficultyVal < 3 || $difficultyVal > 5) {
-            $this->settings->set('peopleinside-powcaptcha.difficulty', 4);
-            $difficultyVal = 4;
-        }
-
+        // normalizeDifficulty handles legacy values (1→3, 2→4) and clamps to [3, MAX].
         $difficulty = PowTokenVerifier::normalizeDifficulty($difficultyVal);
 
         $ip = $this->getClientIp($request);
