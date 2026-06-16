@@ -33,9 +33,10 @@ class RegisterUserCaptchaFields
                 ->rule(
                     function (Context $context) {
                         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+                        $request = $context->getRequest();
 
-                        return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty): void {
-                            if (! is_string($value) || ! $this->tokenVerifier->verifyToken($value, $difficulty)) {
+                        return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty, $request): void {
+                            if (! is_string($value) || ! $this->tokenVerifier->verifyToken($value, $difficulty, $request)) {
                                 $fail($this->validationMessage());
                             }
                         };
