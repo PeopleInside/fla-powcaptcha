@@ -2,7 +2,9 @@
 
 namespace PeopleInside\PowCaptcha\Service;
 
+use Flarum\Foundation\Config;
 use Flarum\Settings\SettingsRepositoryInterface;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
@@ -14,7 +16,9 @@ class PowTokenVerifier
 
     public function __construct(
         private readonly CacheRepository $cache,
-        private readonly SettingsRepositoryInterface $settings
+        private readonly SettingsRepositoryInterface $settings,
+        private readonly Config $config,
+        private readonly Container $container
     ) {
     }
 
@@ -62,18 +66,8 @@ class PowTokenVerifier
 
     private function getUniqueInstancePrefix(): string
     {
-        $configHash = '';
-        if (function_exists('resolve')) {
-            try {
-                $config = resolve('flarum.config');
-                if (is_array($config) || $config instanceof \ArrayAccess) {
-                    $uniqueString = ($config['url'] ?? '') . ':' . ($config['database']['database'] ?? '');
-                    $configHash = hash('sha256', $uniqueString);
-                }
-            } catch (\Throwable) {
-                // Fail silently and fallback to default
-            }
-        }
+        $uniqueString = ($this->config['url'] ?? '') . ':' . ($this->config['database']['database'] ?? '');
+        $configHash = hash('sha256', $uniqueString);
 
         $installedId = $this->settings->get('peopleinside-powcaptcha.installation_id');
         if (empty($installedId)) {
@@ -87,27 +81,57 @@ class PowTokenVerifier
     private function getCurrentRequestIp(): string
     {
         $ipAddress = '';
-        if (function_exists('resolve')) {
+        if ($this->container->bound(ServerRequestInterface::class)) {
             try {
-                $request = resolve(ServerRequestInterface::class);
+                $request = $this->container->make(ServerRequestInterface::class);
                 if ($request instanceof ServerRequestInterface) {
-                    $config = resolve('flarum.config');
-                    $ipAddress = IpDetector::detect($request, is_array($config) || $config instanceof \ArrayAccess ? $config : null);
+                    $ipAddress = IpDetector::detect($request, $this->config);
                 }
             } catch (\Throwable) {
-                // Fail silently and fallback to REMOTE_ADDR
+                // Fail silently and fallback to superglobals
             }
         }
 
         if ($ipAddress === '') {
-            $ipAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+            $ipAddress = $this->getIpFromSuperglobals();
         }
 
         return $ipAddress;
     }
 
+    private function getIpFromSuperglobals(): string
+    {
+        $remoteAddr = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        
+        $trustProxy = false;
+        $proxyHeaders = $this->config['proxy_headers'] ?? null;
+        $proxyAll = $this->config['proxy_all'] ?? null;
+        if (!empty($proxyHeaders) || !empty($proxyAll)) {
+            $trustProxy = true;
+        }
+
+        if ($trustProxy) {
+            $headers = ['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'HTTP_X_REAL_IP'];
+            foreach ($headers as $header) {
+                if (!empty($_SERVER[$header])) {
+                    $ips = explode(',', $_SERVER[$header]);
+                    $ip = trim($ips[0]);
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        return $ip;
+                    }
+                }
+            }
+        }
+
+        return filter_var($remoteAddr, FILTER_VALIDATE_IP) ? $remoteAddr : '';
+    }
+
     public static function normalizeDifficulty(int $difficulty): int
     {
-        return max(1, min(self::MAX_DIFFICULTY, $difficulty));
+        // Difficulty values 1 and 2 are deprecated and insecure; auto-upgrade them to 4 (default).
+        if ($difficulty < 3) {
+            return 4;
+        }
+        return max(3, min(self::MAX_DIFFICULTY, $difficulty));
     }
 }

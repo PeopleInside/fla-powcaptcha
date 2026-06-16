@@ -2,6 +2,7 @@
 
 namespace PeopleInside\PowCaptcha\Controller;
 
+use Flarum\Foundation\Config;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Laminas\Diactoros\Response\JsonResponse;
@@ -20,7 +21,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier
+        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly Config $config
     ) {
     }
 
@@ -37,22 +39,18 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         }
 
         $challenge = bin2hex(random_bytes(16)); // 32 hex chars, 128-bit randomness
-        $difficulty = PowTokenVerifier::normalizeDifficulty(
-            (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3)
-        );
 
-        $config = null;
-        if (function_exists('resolve')) {
-            try {
-                $configResolved = resolve('flarum.config');
-                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
-                    $config = $configResolved;
-                }
-            } catch (\Throwable) {
-                // Silently fallback to null
-            }
+        $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+        $difficultyVal = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
+
+        if ($difficultyVal < 3 || $difficultyVal > 5) {
+            $this->settings->set('peopleinside-powcaptcha.difficulty', 4);
+            $difficultyVal = 4;
         }
-        $ip = IpDetector::detect($request, $config);
+
+        $difficulty = PowTokenVerifier::normalizeDifficulty($difficultyVal);
+
+        $ip = $this->getClientIp($request);
 
         // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
         $this->cache->put(
@@ -108,23 +106,17 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function buildRateLimitKey(ServerRequestInterface $request): ?string
     {
-        $config = null;
-        if (function_exists('resolve')) {
-            try {
-                $configResolved = resolve('flarum.config');
-                if (is_array($configResolved) || $configResolved instanceof \ArrayAccess) {
-                    $config = $configResolved;
-                }
-            } catch (\Throwable) {
-                // Silently fallback to null
-            }
-        }
-        $ipAddress = IpDetector::detect($request, $config);
+        $ipAddress = $this->getClientIp($request);
 
         if ($ipAddress === '') {
             return null;
         }
 
         return 'powcaptcha:rate:' . hash('sha256', $ipAddress);
+    }
+
+    private function getClientIp(ServerRequestInterface $request): string
+    {
+        return IpDetector::detect($request, $this->config);
     }
 }

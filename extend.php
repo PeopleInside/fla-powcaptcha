@@ -23,7 +23,7 @@ $extenders = [
 
     // ── Settings ───────────────────────────────────────────────────────
     (new Extend\Settings())
-        ->default('peopleinside-powcaptcha.difficulty', 3)
+        ->default('peopleinside-powcaptcha.difficulty', 4)
         ->default('peopleinside-powcaptcha.enabled_login', true)
         ->default('peopleinside-powcaptcha.enabled_signup', true)
         ->default('peopleinside-powcaptcha.enabled_forgot', true)
