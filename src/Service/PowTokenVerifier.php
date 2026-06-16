@@ -4,7 +4,6 @@ namespace PeopleInside\PowCaptcha\Service;
 
 use Flarum\Foundation\Config;
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
@@ -17,12 +16,11 @@ class PowTokenVerifier
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly Config $config,
-        private readonly Container $container
+        private readonly Config $config
     ) {
     }
 
-    public function verifyToken(string $token, int $difficulty): bool
+    public function verifyToken(string $token, int $difficulty, ?ServerRequestInterface $request = null): bool
     {
         $parts = explode(':', $token, 2);
 
@@ -54,7 +52,7 @@ class PowTokenVerifier
             return false;
         }
 
-        $currentIp = $this->getCurrentRequestIp();
+        $currentIp = $this->getCurrentRequestIp($request);
         
         return hash_equals((string) $storedIpHash, hash('sha256', $currentIp));
     }
@@ -78,21 +76,28 @@ class PowTokenVerifier
         return hash('sha256', $configHash . ':' . $installedId);
     }
 
-    private function getCurrentRequestIp(): string
+    private function getCurrentRequestIp(?ServerRequestInterface $request = null): string
     {
-        $request = null;
-        if ($this->container->bound(ServerRequestInterface::class)) {
-            try {
-                $req = $this->container->make(ServerRequestInterface::class);
-                if ($req instanceof ServerRequestInterface) {
-                    $request = $req;
-                }
-            } catch (\Throwable) {
-                // Fail silently and let IpDetector handle fallback
-            }
+        if ($request !== null) {
+            return IpDetector::detect($request, $this->config);
         }
 
-        return IpDetector::detect($request, $this->config);
+        try {
+            // Dynamically resolve 'app' (the Flarum / Illuminate container)
+            $container = resolve('app');
+            if ($container->bound(ServerRequestInterface::class)) {
+                $resolvedRequest = $container->make(ServerRequestInterface::class);
+                if ($resolvedRequest instanceof ServerRequestInterface) {
+                    return IpDetector::detect($resolvedRequest, $this->config);
+                }
+            }
+        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+            // Container resolution failed, fallback safely to IpDetector without request
+        } catch (\Throwable $e) {
+            // Handle any other environmental exceptions (e.g. calling from CLI context with no HTTP binding)
+        }
+
+        return IpDetector::detect(null, $this->config);
     }
 
     public static function normalizeDifficulty(int $difficulty): int
