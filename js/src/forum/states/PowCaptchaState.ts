@@ -14,11 +14,9 @@ export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
  *   solved/error ──► idle  (after reset())
  */
 export default class PowCaptchaState {
+    public id: string = Math.random().toString(36).slice(2, 9);
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
-    public isSubmitQueued = false;
-    public onSolvedCallback?: () => void;
-    public onFailedCallback?: () => void;
 
     private token: string | null = null;
     private aborted = false;
@@ -48,19 +46,11 @@ export default class PowCaptchaState {
             this.token = solution;
             this.status = 'solved';
             m.redraw();
-
-            if (this.onSolvedCallback) {
-                this.onSolvedCallback();
-            }
         } catch (err: any) {
             if (this.aborted) return;
             this.status = 'error';
             this.errorMessage = err?.message ?? String(err);
-            this.isSubmitQueued = false;
             m.redraw();
-            if (this.onFailedCallback) {
-                this.onFailedCallback();
-            }
         }
     }
 
@@ -79,7 +69,6 @@ export default class PowCaptchaState {
         this.status = 'idle';
         this.token = null;
         this.errorMessage = null;
-        this.isSubmitQueued = false;
         m.redraw();
     }
 

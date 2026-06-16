@@ -24,6 +24,10 @@ export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
         this.attrs.state.start();
     }
 
+    onremove(vnode: any) {
+        this.attrs.state.reset();
+    }
+
     view() {
         const { state } = this.attrs;
         const status = state.getStatus();
@@ -38,9 +42,7 @@ export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
                 <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solving${isSolving ? ' is-visible' : ''}`}>
                     <LoadingIndicator size="small" />
                     <span className="PowCaptchaWidget-label">
-                        {state.isSubmitQueued
-                            ? app.translator.trans('peopleinside-powcaptcha.forum.submitting')
-                            : app.translator.trans('peopleinside-powcaptcha.forum.solving')}
+                        {app.translator.trans('peopleinside-powcaptcha.forum.solving')}
                     </span>
                 </div>
 

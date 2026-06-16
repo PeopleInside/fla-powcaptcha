@@ -2,6 +2,7 @@
 
 namespace PeopleInside\PowCaptcha\Listener;
 
+use Flarum\Locale\Translator;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
@@ -17,7 +18,8 @@ class ValidateRegistrationPow
 {
     public function __construct(
         private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier
+        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly Translator $translator
     ) {
     }
 
@@ -41,11 +43,11 @@ class ValidateRegistrationPow
         }
 
         $token = CaptchaTokenExtractor::fromRegistrationData($event->data);
-        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
+        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
 
         if (!is_string($token) || !$this->tokenVerifier->verifyToken($token, $difficulty)) {
             throw new \Flarum\Foundation\ValidationException(
-                ['captchaToken' => ['The security challenge could not be verified. Please try again.']]
+                ['captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')]]
             );
         }
     }

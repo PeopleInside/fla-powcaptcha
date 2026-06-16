@@ -4,6 +4,7 @@ namespace PeopleInside\PowCaptcha\Api;
 
 use Flarum\Api\Context;
 use Flarum\Api\Schema;
+use Flarum\Locale\Translator;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
 use Illuminate\Support\Arr;
@@ -17,7 +18,8 @@ class RegisterUserCaptchaFields
 {
     public function __construct(
         private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier
+        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly Translator $translator
     ) {
     }
 
@@ -30,7 +32,7 @@ class RegisterUserCaptchaFields
                 ->required(fn (Context $context) => $this->shouldValidate($context))
                 ->rule(
                     function (Context $context) {
-                        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
+                        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
 
                         return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty): void {
                             if (! is_string($value) || ! $this->tokenVerifier->verifyToken($value, $difficulty)) {
@@ -69,6 +71,6 @@ class RegisterUserCaptchaFields
 
     private function validationMessage(): string
     {
-        return 'The security challenge could not be verified. Please try again.';
+        return $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha');
     }
 }

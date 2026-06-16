@@ -5,6 +5,7 @@ namespace PeopleInside\PowCaptcha\Listener;
 use Flarum\Api\ForgotPasswordValidator;
 use Flarum\Foundation\AbstractValidator;
 use Flarum\Forum\LogInValidator;
+use Flarum\Locale\Translator;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Validation\Validator;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
@@ -20,13 +21,20 @@ class AddPowValidatorRule
 {
     public function __construct(
         private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier
+        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly Translator $translator
     ) {
     }
 
     public function __invoke(AbstractValidator $flarumValidator, Validator $laravelValidator): void
     {
-        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 3);
+        $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+        $difficulty = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
+
+        if ($difficulty < 3 || $difficulty > 5) {
+            $this->settings->set('peopleinside-powcaptcha.difficulty', 4);
+            $difficulty = 4;
+        }
 
         // Register the custom "pow_captcha" rule with the Illuminate validator.
         $laravelValidator->addExtension(
@@ -59,8 +67,6 @@ class AddPowValidatorRule
 
     private function resolveValidationMessage(): string
     {
-        // Flarum's translator is not available here; return a plain fallback.
-        // The JS frontend shows localised messages for the inline widget.
-        return 'The security challenge could not be verified. Please try again.';
+        return $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha');
     }
 }

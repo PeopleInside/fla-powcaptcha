@@ -8,12 +8,10 @@ peopleinside-powcaptcha:
       enabled_forgot_label: Abilita CAPTCHA sul Recupero Password
       enabled_forgot_help: Mostra la verifica di sicurezza PoW nel modulo di recupero password.
       difficulty_label: Difficoltà
-      difficulty_help: Una difficoltà più alta rende il lavoro dei bot più oneroso. Il livello 3 è invisibile per gli utenti (meno di 100 ms). Il livello 5 può richiedere alcuni secondi su dispositivi lenti.
-      difficulty_1: "Livello 1 – Minima (~1 ms)"
-      difficulty_2: "Livello 2 – Facile (~10 ms)"
-      difficulty_3: "Livello 3 – Standard (~100 ms)"
-      difficulty_4: "Livello 4 – Alta (~1 s)"
-      difficulty_5: "Livello 5 – Molto Alta (~10 s)"
+      difficulty_help: Una difficoltà più alta rende il lavoro dei bot più oneroso. Il livello 1 è invisibile per gli utenti (meno di 100 ms). Il livello 3 può richiedere alcuni secondi su dispositivi lenti.
+      difficulty_3: "Livello 1 – Facile (~100 ms)"
+      difficulty_4: "Livello 2 – Alto (~1 s)"
+      difficulty_5: "Livello 3 – Molto Alto (~10 s)"
 
   forum:
     solving: Verifica di sicurezza in corso…
@@ -21,6 +19,7 @@ peopleinside-powcaptcha:
     verified: Verifica di sicurezza superata
     error: Verifica di sicurezza fallita. Riprova.
     retry: Riprova
+    challenge_not_ready: La verifica di sicurezza è ancora in corso o non è stata completata. Attendi.
 
   validation:
     pow_captcha: La verifica di sicurezza non è riuscita. Riprova.

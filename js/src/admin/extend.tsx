@@ -1,6 +1,15 @@
 import app from 'flarum/admin/app';
 
 export default function registerSettings(): void {
+    // Automatically migrate deprecated levels 1 and 2 to level 4 client-side
+    const settingsObj = (app as any).data?.settings || (app as any).settings;
+    if (settingsObj) {
+        const current = settingsObj['peopleinside-powcaptcha.difficulty'];
+        if (current === '1' || current === '2' || current === 1 || current === 2) {
+            settingsObj['peopleinside-powcaptcha.difficulty'] = '4';
+        }
+    }
+
     const appWithSettingsApi = app as unknown as {
         registry?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
         extensionData?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
@@ -42,8 +51,6 @@ export default function registerSettings(): void {
         setting: 'peopleinside-powcaptcha.difficulty',
         type: 'select',
         options: {
-            '1': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_1') as string,
-            '2': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_2') as string,
             '3': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_3') as string,
             '4': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_4') as string,
             '5': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_5') as string,
