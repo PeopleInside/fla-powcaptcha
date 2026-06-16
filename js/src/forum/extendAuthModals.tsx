@@ -64,17 +64,16 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         }
     });
 
-    override(prototype, 'onsubmit', function (this: any, original: any, e: Event) {
-        if (!isEnabled(enabledKey)) {
-            return original.call(this, e);
-        }
-        if (skipCaptcha.call(this)) {
-            return original.call(this, e);
-        }
+    const checkAndBlock = function (this: any, e?: Event) {
+        if (!isEnabled(enabledKey)) return true;
+        if (skipCaptcha.call(this)) return true;
 
         const status = this.powCaptchaState?.getStatus();
         if (status !== 'solved') {
-            e.preventDefault();
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             this.loading = false;
             m.redraw();
 
@@ -83,11 +82,29 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
                 { type: 'error' },
                 app.translator.trans('peopleinside-powcaptcha.forum.challenge_not_ready') as string
             );
-            return;
+            return false;
         }
+        return true;
+    };
 
+    override(prototype, 'onsubmit', function (this: any, original: any, e: Event) {
+        if (!checkAndBlock.call(this, e)) return;
         return original.call(this, e);
     });
+
+    if (typeof prototype.onSubmit === 'function') {
+        override(prototype, 'onSubmit', function (this: any, original: any, e: Event) {
+            if (!checkAndBlock.call(this, e)) return;
+            return original.call(this, e);
+        });
+    }
+
+    if (typeof prototype.submit === 'function') {
+        override(prototype, 'submit', function (this: any, original: any, e: Event) {
+            if (!checkAndBlock.call(this, e)) return;
+            return original.call(this, e);
+        });
+    }
 }
 
 /**

@@ -20,6 +20,7 @@ export default class PowCaptchaState {
 
     private token: string | null = null;
     private aborted = false;
+    private currentRunId = 0;
 
     // ─── Public API ───────────────────────────────────────────────────
 
@@ -28,26 +29,27 @@ export default class PowCaptchaState {
         if (this.status !== 'idle') return;
 
         this.aborted = false;
+        const runId = ++this.currentRunId;
         this.status = 'loading';
         m.redraw();
 
         try {
             const { challenge, difficulty } = await this.fetchChallenge();
 
-            if (this.aborted) return;
+            if (this.aborted || runId !== this.currentRunId) return;
 
             this.status = 'solving';
             m.redraw();
 
-            const solution = await this.solve(challenge, difficulty);
+            const solution = await this.solve(challenge, difficulty, runId);
 
-            if (this.aborted) return;
+            if (this.aborted || runId !== this.currentRunId) return;
 
             this.token = solution;
             this.status = 'solved';
             m.redraw();
         } catch (err: any) {
-            if (this.aborted) return;
+            if (this.aborted || runId !== this.currentRunId) return;
             this.status = 'error';
             this.errorMessage = err?.message ?? String(err);
             m.redraw();
@@ -66,6 +68,7 @@ export default class PowCaptchaState {
     /** Reset to idle so start() can be called again. */
     reset(): void {
         this.aborted = true;
+        this.currentRunId++;
         this.status = 'idle';
         this.token = null;
         this.errorMessage = null;
@@ -114,7 +117,7 @@ export default class PowCaptchaState {
      * and avoid excessive asynchronous microtask overhead in the loop,
      * while yielding occasionally to keep the browser UI responsive.
      */
-    private async solve(challenge: string, difficulty: number): Promise<string> {
+    private async solve(challenge: string, difficulty: number, runId: number): Promise<string> {
         const prefix = `${challenge}:`;
         const startedAt = Date.now();
         const normalizedDiff = Math.max(1, Math.min(8, difficulty));
@@ -124,15 +127,15 @@ export default class PowCaptchaState {
         let lastYieldAt = Date.now();
 
         for (let nonce = 0; nonce < maxAttempts; nonce++) {
-            if (this.aborted) throw new Error('aborted');
+            if (this.aborted || runId !== this.currentRunId) throw new Error('aborted');
 
             // Yield periodically to prevent blocking the UI
-            if (nonce % 16384 === 0) {
+            if (nonce % 2048 === 0) {
                 const now = Date.now();
                 if (now - startedAt > maxDuration) {
                     throw new Error('challenge solve timeout');
                 }
-                if (now - lastYieldAt > 32) {
+                if (now - lastYieldAt > 16) {
                     await new Promise<void>((r) => setTimeout(r, 0));
                     lastYieldAt = Date.now();
                 }
