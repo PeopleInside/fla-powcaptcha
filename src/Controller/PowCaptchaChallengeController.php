@@ -63,52 +63,28 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     private function canIssueChallenge(ServerRequestInterface $request, ?int &$retryAfter = null): bool
     {
-        $rateKey = $this->buildRateLimitKey($request);
-
-        if ($rateKey === null) {
+        $ipAddress = $this->getClientIp($request);
+        if ($ipAddress === '') {
             $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
             return false;
         }
 
-        $rateData = $this->cache->get($rateKey);
+        $ipHash = hash('sha256', $ipAddress);
         $now = time();
+        $window = (int) floor($now / self::RATE_LIMIT_WINDOW_SECONDS);
+        $expiresAt = ($window + 1) * self::RATE_LIMIT_WINDOW_SECONDS;
+        $ttl = max(1, $expiresAt - $now);
 
-        if (is_array($rateData) && isset($rateData['attempts'], $rateData['expires_at'])) {
-            if ($now >= $rateData['expires_at']) {
-                $rateData = [
-                    'attempts' => 1,
-                    'expires_at' => $now + self::RATE_LIMIT_WINDOW_SECONDS
-                ];
-                $this->cache->put($rateKey, $rateData, self::RATE_LIMIT_WINDOW_SECONDS);
-            } else {
-                if ($rateData['attempts'] >= self::RATE_LIMIT_MAX_REQUESTS) {
-                    $retryAfter = $rateData['expires_at'] - $now;
-                    return false;
-                }
-                $rateData['attempts']++;
-                $ttl = $rateData['expires_at'] - $now;
-                $this->cache->put($rateKey, $rateData, max(1, $ttl));
+        // Try to claim any slot from 1 up to MAX_REQUESTS using atomic cache->add
+        for ($slot = 1; $slot <= self::RATE_LIMIT_MAX_REQUESTS; $slot++) {
+            $key = "powcaptcha:rate:{$ipHash}:{$window}:{$slot}";
+            if ($this->cache->add($key, 1, $ttl)) {
+                return true;
             }
-        } else {
-            $rateData = [
-                'attempts' => 1,
-                'expires_at' => $now + self::RATE_LIMIT_WINDOW_SECONDS
-            ];
-            $this->cache->put($rateKey, $rateData, self::RATE_LIMIT_WINDOW_SECONDS);
         }
 
-        return true;
-    }
-
-    private function buildRateLimitKey(ServerRequestInterface $request): ?string
-    {
-        $ipAddress = $this->getClientIp($request);
-
-        if ($ipAddress === '') {
-            return null;
-        }
-
-        return 'powcaptcha:rate:' . hash('sha256', $ipAddress);
+        $retryAfter = $ttl;
+        return false;
     }
 
     private function getClientIp(ServerRequestInterface $request): string
