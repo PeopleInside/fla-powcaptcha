@@ -128,10 +128,16 @@ class PowTokenVerifier
 
     public static function normalizeDifficulty(int $difficulty): int
     {
-        // Difficulty values 1 and 2 are deprecated and insecure; auto-upgrade them to 4 (default).
-        if ($difficulty < 3) {
+        // Difficulty values 1 and 2 are from the old scheme and no longer valid.
+        // Map them to their nearest equivalent in the new 3-level scheme (3/4/5):
+        // old 1 → new 3 (Easy), old 2 → new 4 (High).
+        if ($difficulty === 1) {
+            return 3;
+        }
+        if ($difficulty === 2) {
             return 4;
         }
+        // Any other out-of-range value is clamped to the valid range [3, MAX_DIFFICULTY].
         return max(3, min(self::MAX_DIFFICULTY, $difficulty));
     }
 }

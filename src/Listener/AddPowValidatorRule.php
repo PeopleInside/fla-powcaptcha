@@ -29,12 +29,10 @@ class AddPowValidatorRule
     public function __invoke(AbstractValidator $flarumValidator, Validator $laravelValidator): void
     {
         $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
-        $difficulty = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
+        $rawDifficulty = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
 
-        if ($difficulty < 3 || $difficulty > 5) {
-            $this->settings->set('peopleinside-powcaptcha.difficulty', 4);
-            $difficulty = 4;
-        }
+        // normalizeDifficulty handles legacy values (1→3, 2→4) and clamps to [3, MAX].
+        $difficulty = PowTokenVerifier::normalizeDifficulty($rawDifficulty);
 
         // Register the custom "pow_captcha" rule with the Illuminate validator.
         $laravelValidator->addExtension(

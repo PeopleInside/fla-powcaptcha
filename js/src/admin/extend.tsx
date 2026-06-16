@@ -1,11 +1,17 @@
 import app from 'flarum/admin/app';
 
 export default function registerSettings(): void {
-    // Automatically migrate deprecated levels 1 and 2 to level 4 client-side
+    // Migrate deprecated difficulty values to the new 3-level scheme (3/4/5).
+    // Old level 1 → new level 3 (Easy), old level 2 → new level 4 (High).
+    // Any value outside the valid set {3,4,5} is clamped to the default (4).
     const settingsObj = (app as any).data?.settings || (app as any).settings;
     if (settingsObj) {
         const current = settingsObj['peopleinside-powcaptcha.difficulty'];
-        if (current === '1' || current === '2' || current === 1 || current === 2) {
+        const numVal = typeof current === 'string' ? parseInt(current, 10) : (typeof current === 'number' ? current : NaN);
+        const legacyMap: Record<number, string> = { 1: '3', 2: '4' };
+        if (!isNaN(numVal) && legacyMap[numVal] !== undefined) {
+            settingsObj['peopleinside-powcaptcha.difficulty'] = legacyMap[numVal];
+        } else if (!isNaN(numVal) && ![3, 4, 5].includes(numVal)) {
             settingsObj['peopleinside-powcaptcha.difficulty'] = '4';
         }
     }
