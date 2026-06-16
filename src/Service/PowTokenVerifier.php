@@ -4,7 +4,7 @@ namespace PeopleInside\PowCaptcha\Service;
 
 use Flarum\Foundation\Config;
 use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Container\Container;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
@@ -80,50 +80,19 @@ class PowTokenVerifier
 
     private function getCurrentRequestIp(): string
     {
-        $ipAddress = '';
+        $request = null;
         if ($this->container->bound(ServerRequestInterface::class)) {
             try {
-                $request = $this->container->make(ServerRequestInterface::class);
-                if ($request instanceof ServerRequestInterface) {
-                    $ipAddress = IpDetector::detect($request, $this->config);
+                $req = $this->container->make(ServerRequestInterface::class);
+                if ($req instanceof ServerRequestInterface) {
+                    $request = $req;
                 }
             } catch (\Throwable) {
-                // Fail silently and fallback to superglobals
+                // Fail silently and let IpDetector handle fallback
             }
         }
 
-        if ($ipAddress === '') {
-            $ipAddress = $this->getIpFromSuperglobals();
-        }
-
-        return $ipAddress;
-    }
-
-    private function getIpFromSuperglobals(): string
-    {
-        $remoteAddr = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-        
-        $trustProxy = false;
-        $proxyHeaders = $this->config['proxy_headers'] ?? null;
-        $proxyAll = $this->config['proxy_all'] ?? null;
-        if (!empty($proxyHeaders) || !empty($proxyAll)) {
-            $trustProxy = true;
-        }
-
-        if ($trustProxy) {
-            $headers = ['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'HTTP_X_REAL_IP'];
-            foreach ($headers as $header) {
-                if (!empty($_SERVER[$header])) {
-                    $ips = explode(',', $_SERVER[$header]);
-                    $ip = trim($ips[0]);
-                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                        return $ip;
-                    }
-                }
-            }
-        }
-
-        return filter_var($remoteAddr, FILTER_VALIDATE_IP) ? $remoteAddr : '';
+        return IpDetector::detect($request, $this->config);
     }
 
     public static function normalizeDifficulty(int $difficulty): int
