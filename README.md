@@ -18,7 +18,7 @@ Bots must solve the same puzzle for every request; legitimate users complete it 
 
 - 🔒 **No external services** – fully self-hosted
 - ⚡ **Invisible to users** – solved automatically while they fill the form
-- ⚙️ **Configurable difficulty** – 5 levels (< 1 ms → ~10 s)
+- ⚙️ **Configurable difficulty** – 3 levels (~100 ms → ~10 s)
 - 🌓 **Dark / light mode** – widget adapts to Flarum's current theme
 - 🌍 **Italian & English** – auto-detected; add more locales in `locale/`
 - 🔁 **Replay-proof** – each challenge is single-use (stored in Flarum's cache)
@@ -83,7 +83,7 @@ Go to **Admin → Extensions → PoW CAPTCHA** and choose:
 | Enable on Login | ✓ | Protect the login form |
 | Enable on Registration | ✓ | Protect the sign-up form |
 | Enable on Password Reset | ✓ | Protect the forgot-password form |
-| Difficulty | 3 – Standard (~100 ms) | SHA-256 leading-zero count (1–5) |
+| Difficulty | 4 – High (~1 s) | SHA-256 leading-zero count (3–5) |
 
 ## Development (for contributors only)
 

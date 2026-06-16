@@ -18,10 +18,6 @@ function isEnabled(key: string): boolean {
     return !!app.forum.attribute<boolean>('peopleinside-powcaptcha.' + key);
 }
 
-function captchaNotSolved(state: PowCaptchaState | undefined): boolean {
-    return !!state && state.getStatus() !== 'solved';
-}
-
 /**
  * Extend an auth modal with the PoW CAPTCHA widget.
  *
@@ -40,21 +36,6 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         this.powCaptchaState = new PowCaptchaState();
-        this.powCaptchaState.onSolvedCallback = () => {
-            if (this.powCaptchaState?.isSubmitQueued) {
-                this.powCaptchaState.isSubmitQueued = false;
-                const fakeEvent = {
-                    preventDefault: () => {},
-                } as unknown as SubmitEvent;
-                this.onsubmit(fakeEvent);
-            }
-        };
-        this.powCaptchaState.onFailedCallback = () => {
-            if (this.loading) {
-                this.loading = false;
-                m.redraw();
-            }
-        };
     });
 
     extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
@@ -70,10 +51,10 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
 
         items.add(
             'pow-captcha',
-            <PowCaptchaWidget state={this.powCaptchaState} />,
+            <PowCaptchaWidget state={this.powCaptchaState} key={this.powCaptchaState.id} />,
             -5
          );
-    });
+     });
 
     extend(prototype, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
@@ -83,24 +64,47 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         }
     });
 
-    override(prototype, 'onsubmit', function (this: any, original: (e: SubmitEvent) => void, e: SubmitEvent) {
-        if (skipCaptcha.call(this)) {
-            return original.call(this, e);
-        }
+    const checkAndBlock = function (this: any, e?: Event) {
+        if (!isEnabled(enabledKey)) return true;
+        if (skipCaptcha.call(this)) return true;
 
-        if (isEnabled(enabledKey) && captchaNotSolved(this.powCaptchaState)) {
-            e.preventDefault();
-            this.powCaptchaState?.start();
-            if (this.powCaptchaState) {
-                this.powCaptchaState.isSubmitQueued = true;
+        const status = this.powCaptchaState?.getStatus();
+        if (status !== 'solved') {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+                e.stopPropagation();
             }
-            this.loading = true;
+            this.loading = false;
             m.redraw();
-            return;
-        }
 
+            // Show a top-level alert preventing submission before challenge is resolved
+            app.alerts.show(
+                { type: 'error' },
+                app.translator.trans('peopleinside-powcaptcha.forum.challenge_not_ready') as string
+            );
+            return false;
+        }
+        return true;
+    };
+
+    override(prototype, 'onsubmit', function (this: any, original: any, e: Event) {
+        if (!checkAndBlock.call(this, e)) return;
         return original.call(this, e);
     });
+
+    if (typeof prototype.onSubmit === 'function') {
+        override(prototype, 'onSubmit', function (this: any, original: any, e: Event) {
+            if (!checkAndBlock.call(this, e)) return;
+            return original.call(this, e);
+        });
+    }
+
+    if (typeof prototype.submit === 'function') {
+        override(prototype, 'submit', function (this: any, original: any, e: Event) {
+            if (!checkAndBlock.call(this, e)) return;
+            return original.call(this, e);
+        });
+    }
 }
 
 /**
