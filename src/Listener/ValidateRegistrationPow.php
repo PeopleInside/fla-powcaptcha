@@ -43,7 +43,14 @@ class ValidateRegistrationPow
         }
 
         $token = CaptchaTokenExtractor::fromRegistrationData($event->data);
+        $honeypot = CaptchaTokenExtractor::fromHoneypotData($event->data);
         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+
+        if ($honeypot !== '') {
+            throw new \Flarum\Foundation\ValidationException(
+                ['captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')]]
+            );
+        }
 
         if (!is_string($token) || !$this->tokenVerifier->verifyToken($token, $difficulty)) {
             throw new \Flarum\Foundation\ValidationException(

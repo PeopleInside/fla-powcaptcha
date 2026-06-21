@@ -42,6 +42,7 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
+        data['email_confirmation'] = this.powCaptchaState?.getHoneypotValue() ?? '';
     });
 
     extend(prototype, 'fields', function (this: any, items: any) {

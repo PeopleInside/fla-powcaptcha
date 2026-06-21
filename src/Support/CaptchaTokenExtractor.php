@@ -18,6 +18,15 @@ final class CaptchaTokenExtractor
         return is_string($token) ? $token : '';
     }
 
+    public static function fromHoneypotData(array $data): string
+    {
+        $honeypot = Arr::get($data, 'attributes.email_confirmation')
+            ?? Arr::get($data, 'email_confirmation')
+            ?? Arr::get($data, 'data.attributes.email_confirmation');
+
+        return is_string($honeypot) ? $honeypot : '';
+    }
+
     public static function usesOAuthRegistrationToken(array $data): bool
     {
         $token = Arr::get($data, 'attributes.token')

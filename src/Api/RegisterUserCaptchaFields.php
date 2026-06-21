@@ -26,6 +26,11 @@ class RegisterUserCaptchaFields
     public function __invoke(): array
     {
         return [
+            Schema\Str::make('email_confirmation')
+                ->visible(false)
+                ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
+                ->save(fn () => null),
+
             Schema\Str::make('captchaToken')
                 ->visible(false)
                 ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
@@ -35,7 +40,17 @@ class RegisterUserCaptchaFields
                         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
                         $request = $context->getRequest();
 
-                        return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty, $request): void {
+                        return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty, $request, $context): void {
+                            $bodyData = $context->body();
+                            $honeypot = Arr::get($bodyData, 'data.attributes.email_confirmation')
+                                ?? Arr::get($bodyData, 'email_confirmation')
+                                ?? Arr::get($bodyData, 'data.email_confirmation');
+
+                            if (!empty($honeypot)) {
+                                $fail($this->validationMessage());
+                                return;
+                            }
+
                             if (! is_string($value) || ! $this->tokenVerifier->verifyToken($value, $difficulty, $request)) {
                                 $fail($this->validationMessage());
                             }
