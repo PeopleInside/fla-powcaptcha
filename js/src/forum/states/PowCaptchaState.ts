@@ -17,12 +17,17 @@ export default class PowCaptchaState {
     public id: string = Math.random().toString(36).slice(2, 9);
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
+    public honeypotValue = '';
 
     private token: string | null = null;
     private aborted = false;
     private currentRunId = 0;
 
     // ─── Public API ───────────────────────────────────────────────────
+
+    public getHoneypotValue(): string {
+        return this.honeypotValue;
+    }
 
     /** Start fetching a challenge and solving it. Safe to call multiple times. */
     async start(): Promise<void> {
@@ -72,6 +77,7 @@ export default class PowCaptchaState {
         this.status = 'idle';
         this.token = null;
         this.errorMessage = null;
+        this.honeypotValue = '';
         m.redraw();
     }
 

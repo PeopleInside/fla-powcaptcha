@@ -18,13 +18,40 @@ interface PowCaptchaWidgetAttrs extends ComponentAttrs {
  *  error    → ✗ icon + error message + Retry button
  */
 export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
+    cleanupInteractionListeners?: () => void;
+
     oncreate(vnode: any) {
         super.oncreate(vnode);
-        // Start solving as soon as the widget is mounted.
-        this.attrs.state.start();
+
+        const state = this.attrs.state;
+        let started = false;
+
+        const trigger = () => {
+            if (started) return;
+            started = true;
+            cleanup();
+            state.start();
+        };
+
+        const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart', 'focusin'];
+        
+        const cleanup = () => {
+            events.forEach(event => {
+                document.removeEventListener(event, trigger, { capture: true });
+            });
+        };
+
+        this.cleanupInteractionListeners = cleanup;
+
+        events.forEach(event => {
+            document.addEventListener(event, trigger, { passive: true, capture: true });
+        });
     }
 
     onremove(vnode: any) {
+        if (this.cleanupInteractionListeners) {
+            this.cleanupInteractionListeners();
+        }
         this.attrs.state.reset();
     }
 
@@ -39,6 +66,19 @@ export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
         // cross-fade without any layout jump in the modal.
         return (
             <div className={`PowCaptchaWidget PowCaptchaWidget--${status}`}>
+                {/* Honeypot field - visually and physically hidden to humans, but alluring to bot autofills and custom scripts */}
+                <input
+                    className="pow-confirm-field"
+                    type="text"
+                    name="email_confirmation"
+                    tabindex="-1"
+                    autocomplete="off"
+                    value={state.honeypotValue}
+                    oninput={(e: any) => {
+                        state.honeypotValue = e.target.value;
+                    }}
+                />
+
                 <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solving${isSolving ? ' is-visible' : ''}`}>
                     <LoadingIndicator size="small" />
                     <span className="PowCaptchaWidget-label">

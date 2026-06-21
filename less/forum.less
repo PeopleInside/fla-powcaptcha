@@ -1,6 +1,18 @@
 // ── PoW CAPTCHA widget styles ────────────────────────────────────────────────
 
 .PowCaptchaWidget {
+    // ── Honeypot visually hidden, layout-active to trick smart bots ────
+    .pow-confirm-field {
+        opacity: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+        width: 1px !important;
+        height: 1px !important;
+        z-index: -9999 !important;
+        pointer-events: none !important;
+    }
+
     // Fixed height keeps the modal dialog from resizing between states.
     // All three inner panels are absolutely positioned so they overlap;
     // the active one is revealed by opacity, producing a smooth cross-fade

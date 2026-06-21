@@ -37,7 +37,12 @@ class AddPowValidatorRule
         // Register the custom "pow_captcha" rule with the Illuminate validator.
         $laravelValidator->addExtension(
             'pow_captcha',
-            function (string $attribute, mixed $value) use ($difficulty): bool {
+            function (string $attribute, mixed $value) use ($difficulty, $laravelValidator): bool {
+                $data = $laravelValidator->getData();
+                $honeypot = $data['email_confirmation'] ?? '';
+                if ($honeypot !== '') {
+                    return false;
+                }
                 return is_string($value) && $this->tokenVerifier->verifyToken($value, $difficulty);
             }
         );
