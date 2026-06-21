@@ -38,7 +38,7 @@ class RegisterUserCaptchaFields
                 ->rule(
                     function (Context $context) {
                         $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
-                        $request = $context->getRequest();
+                        $request = $context->request;
 
                         return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty, $request, $context): void {
                             $bodyData = $context->body();
