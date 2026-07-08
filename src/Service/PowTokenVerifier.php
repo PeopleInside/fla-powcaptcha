@@ -5,6 +5,7 @@ namespace PeopleInside\PowCaptcha\Service;
 use Flarum\Foundation\Config;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Container\Container;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -13,10 +14,13 @@ class PowTokenVerifier
     public const CHALLENGE_CACHE_PREFIX = 'powcaptcha:chal:';
     public const MAX_DIFFICULTY = 8;
 
+    private ?string $cachedInstancePrefix = null;
+
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly Container $container
     ) {
     }
 
@@ -64,6 +68,10 @@ class PowTokenVerifier
 
     private function getUniqueInstancePrefix(): string
     {
+        if ($this->cachedInstancePrefix !== null) {
+            return $this->cachedInstancePrefix;
+        }
+
         $uniqueString = ($this->config['url'] ?? '') . ':' . ($this->config['database']['database'] ?? '');
         $configHash = hash('sha256', $uniqueString);
 
@@ -73,7 +81,7 @@ class PowTokenVerifier
             $this->settings->set('peopleinside-powcaptcha.installation_id', $installedId);
         }
 
-        return hash('sha256', $configHash . ':' . $installedId);
+        return $this->cachedInstancePrefix = hash('sha256', $configHash . ':' . $installedId);
     }
 
     private function getCurrentRequestIp(?ServerRequestInterface $request = null): string
@@ -83,18 +91,16 @@ class PowTokenVerifier
         }
 
         try {
-            // Dynamically resolve 'app' (the Flarum / Illuminate container)
-            $container = resolve('app');
-            if ($container->bound(ServerRequestInterface::class)) {
-                $resolvedRequest = $container->make(ServerRequestInterface::class);
+            if ($this->container->bound(ServerRequestInterface::class)) {
+                $resolvedRequest = $this->container->make(ServerRequestInterface::class);
                 if ($resolvedRequest instanceof ServerRequestInterface) {
                     return IpDetector::detect($resolvedRequest, $this->config);
                 }
             }
-        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
-            // Container resolution failed, fallback safely to IpDetector without request
         } catch (\Throwable $e) {
-            // Handle any other environmental exceptions (e.g. calling from CLI context with no HTTP binding)
+            // Intentionally broad: this is a best-effort fallback for contexts with
+            // no HTTP request bound (e.g. CLI/queue). Any resolution failure here
+            // must not break the caller; we fall through to IpDetector::detect(null, ...).
         }
 
         return IpDetector::detect(null, $this->config);
