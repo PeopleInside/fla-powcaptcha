@@ -30,37 +30,49 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
+        try {
+            $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
 
-        if (!$this->canIssueChallenge($request, $retryAfter)) {
+            if (!$this->canIssueChallenge($request, $retryAfter)) {
+                return new JsonResponse(
+                    ['error' => 'Too many challenge requests. Please retry shortly.'],
+                    429,
+                    ['Retry-After' => (string) max(1, $retryAfter)]
+                );
+            }
+
+            $challenge = bin2hex(random_bytes(16)); // 32 hex chars, 128-bit randomness
+
+            $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+            $difficultyVal = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
+
+            // normalizeDifficulty handles legacy values (1→3, 2→4) and clamps to [3, MAX].
+            $difficulty = PowTokenVerifier::normalizeDifficulty($difficultyVal);
+
+            $ip = $this->getClientIp($request);
+
+            // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
+            $this->cache->put(
+                $this->tokenVerifier->getChallengeCacheKey($challenge),
+                hash('sha256', $ip),
+                self::CHALLENGE_TTL_SECONDS
+            );
+
+            return new JsonResponse([
+                'challenge'  => $challenge,
+                'difficulty' => $difficulty,
+            ], 200);
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                '[fla-powcaptcha] Cache or other service failure during challenge generation: ' . $e->getMessage(),
+                ['exception' => $e]
+            );
             return new JsonResponse(
-                ['error' => 'Too many challenge requests. Please retry shortly.'],
-                429,
-                ['Retry-After' => (string) max(1, $retryAfter)]
+                ['error' => 'The security CAPTCHA service is temporarily unavailable. Please try again shortly.'],
+                503,
+                ['Retry-After' => '60']
             );
         }
-
-        $challenge = bin2hex(random_bytes(16)); // 32 hex chars, 128-bit randomness
-
-        $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
-        $difficultyVal = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
-
-        // normalizeDifficulty handles legacy values (1→3, 2→4) and clamps to [3, MAX].
-        $difficulty = PowTokenVerifier::normalizeDifficulty($difficultyVal);
-
-        $ip = $this->getClientIp($request);
-
-        // Store the challenge with its hashed IP binding under the multi-instance safe prefix.
-        $this->cache->put(
-            $this->tokenVerifier->getChallengeCacheKey($challenge),
-            hash('sha256', $ip),
-            self::CHALLENGE_TTL_SECONDS
-        );
-
-        return new JsonResponse([
-            'challenge'  => $challenge,
-            'difficulty' => $difficulty,
-        ], 200);
     }
 
     private function canIssueChallenge(ServerRequestInterface $request, ?int &$retryAfter = null): bool

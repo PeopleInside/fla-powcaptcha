@@ -52,7 +52,21 @@ class PowTokenVerifier
         }
 
         $cacheKey = $this->getChallengeCacheKey($challenge);
-        $storedIpHash = $this->cache->pull($cacheKey);
+
+        // Fail-closed security posture:
+        // In case of a cache connection or operational failure, we explicitly choose to FAIL CLOSED.
+        // Allowing the request to pass (fail-open) would allow attackers/bots to bypass the CAPTCHA check
+        // entirely by hammering the site and triggering cache connection exhaustion or utilizing transient cache failures.
+        // Therefore, we reject the verification attempt, log a high-priority error for administrators, and return false.
+        try {
+            $storedIpHash = $this->cache->pull($cacheKey);
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                '[fla-powcaptcha] Cache operational failure during challenge verification (failing closed): ' . $e->getMessage(),
+                ['exception' => $e]
+            );
+            return false;
+        }
 
         if ($storedIpHash === null) {
             return false;
