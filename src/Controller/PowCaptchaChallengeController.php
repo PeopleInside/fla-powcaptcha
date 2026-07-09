@@ -11,6 +11,7 @@ use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 
 class PowCaptchaChallengeController implements RequestHandlerInterface
 {
@@ -22,7 +23,8 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
         private readonly PowTokenVerifier $tokenVerifier,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -65,6 +67,13 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
     {
         $ipAddress = $this->getClientIp($request);
         if ($ipAddress === '') {
+            $this->logger->warning(
+                '[fla-powcaptcha] Empty client IP detected while issuing a challenge; ' .
+                'rejecting with 429. If this server sits behind a reverse proxy/load ' .
+                "balancer, set the 'proxy_headers' or 'proxy_all' keys in config.php " .
+                '(see README) or PoW captcha will block all users on login, signup, ' .
+                'and password reset.'
+            );
             $retryAfter = self::RATE_LIMIT_WINDOW_SECONDS;
             return false;
         }

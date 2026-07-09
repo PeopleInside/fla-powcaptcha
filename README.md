@@ -104,6 +104,21 @@ php flarum cache:clear
 - The challenge is a 128-bit cryptographically random value; it cannot be guessed or forged.
 - The server independently re-computes the SHA-256 hash to verify the solution.
 
+## Running Behind a Reverse Proxy / Load Balancer
+
+Challenges and tokens are bound to the visitor's IP address. If your Flarum instance sits
+behind a reverse proxy or load balancer that does not populate `REMOTE_ADDR` with the real
+client IP, you **must** set one of the following keys in your `config.php` so Flarum (and
+this extension) can resolve the correct IP from forwarded headers:
+
+- `'proxy_headers' => true` (or an explicit list of trusted proxy IPs), **or**
+- `'proxy_all' => true`
+
+If neither is set and the server also can't fall back to `REMOTE_ADDR`, IP resolution
+returns empty and this extension will reject all challenge requests with a `429` to fail
+safe. A warning is logged in that case (`[fla-powcaptcha] ...`) — check your Flarum log if
+users report being unable to log in, register, or reset their password.
+
 ## License
 
 [Apache-2.0](LICENSE)

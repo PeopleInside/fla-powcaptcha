@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Container\Container;
 use PeopleInside\PowCaptcha\Support\IpDetector;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 
 class PowTokenVerifier
 {
@@ -20,7 +21,8 @@ class PowTokenVerifier
         private readonly CacheRepository $cache,
         private readonly SettingsRepositoryInterface $settings,
         private readonly Config $config,
-        private readonly Container $container
+        private readonly Container $container,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -57,7 +59,7 @@ class PowTokenVerifier
         }
 
         $currentIp = $this->getCurrentRequestIp($request);
-        
+
         return hash_equals((string) $storedIpHash, hash('sha256', $currentIp));
     }
 
@@ -84,7 +86,32 @@ class PowTokenVerifier
         return $this->cachedInstancePrefix = hash('sha256', $configHash . ':' . $installedId);
     }
 
-    private function getCurrentRequestIp(?ServerRequestInterface $request = null): string
+    /**
+     * Resolve the current client IP for binding challenges/tokens.
+     *
+     * If detection yields an empty string (e.g. a reverse proxy that doesn't
+     * set REMOTE_ADDR and isn't covered by the configured proxy_headers /
+     * proxy_all keys), we log a warning so admins have a diagnostic path
+     * instead of silently seeing 429s with no explanation. See README for
+     * the config.php keys required behind a reverse proxy.
+     */
+    public function getCurrentRequestIp(?ServerRequestInterface $request = null): string
+    {
+        $ip = $this->resolveIp($request);
+
+        if ($ip === '') {
+            $this->logger->warning(
+                '[fla-powcaptcha] Unable to determine client IP address. ' .
+                'If this server is behind a reverse proxy/load balancer, set the ' .
+                "'proxy_headers' or 'proxy_all' keys in config.php, otherwise PoW " .
+                'challenges will be rejected for all visitors. See the extension README.'
+            );
+        }
+
+        return $ip;
+    }
+
+    private function resolveIp(?ServerRequestInterface $request = null): string
     {
         if ($request !== null) {
             return IpDetector::detect($request, $this->config);
