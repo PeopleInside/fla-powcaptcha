@@ -45,7 +45,7 @@ class IpDetector
             foreach ($headers as $header) {
                 if (!empty($serverParams[$header])) {
                     $ips = explode(',', $serverParams[$header]);
-                    $ip = trim($ips[0]);
+                    $ip = trim(end($ips));
                     if (filter_var($ip, FILTER_VALIDATE_IP)) {
                         return $ip;
                     }
