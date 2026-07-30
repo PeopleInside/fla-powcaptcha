@@ -96,12 +96,14 @@ class PowCaptchaChallengeController implements RequestHandlerInterface
         $expiresAt = ($window + 1) * self::RATE_LIMIT_WINDOW_SECONDS;
         $ttl = max(1, $expiresAt - $now);
 
-        // Try to claim any slot from 1 up to MAX_REQUESTS using atomic cache->add
-        for ($slot = 1; $slot <= self::RATE_LIMIT_MAX_REQUESTS; $slot++) {
-            $key = "powcaptcha:rate:{$ipHash}:{$window}:{$slot}";
-            if ($this->cache->add($key, 1, $ttl)) {
-                return true;
-            }
+        $key = "powcaptcha:rate:{$ipHash}:{$window}";
+        if ($this->cache->add($key, 1, $ttl)) {
+            return true;
+        }
+
+        $count = (int) $this->cache->increment($key);
+        if ($count <= self::RATE_LIMIT_MAX_REQUESTS) {
+            return true;
         }
 
         $retryAfter = $ttl;
