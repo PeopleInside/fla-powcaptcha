@@ -18,6 +18,7 @@ export default class PowCaptchaState {
     public status: PowStatus = 'idle';
     public errorMessage: string | null = null;
     public honeypotValue = '';
+    public solvedAt: number | null = null;
 
     private token: string | null = null;
     private aborted = false;
@@ -51,6 +52,7 @@ export default class PowCaptchaState {
             if (this.aborted || runId !== this.currentRunId) return;
 
             this.token = solution;
+            this.solvedAt = Date.now();
             this.status = 'solved';
             m.redraw();
         } catch (err: any) {
@@ -61,9 +63,19 @@ export default class PowCaptchaState {
         }
     }
 
-    /** Return the solved token, or null if not yet solved. */
+    /** Return the solved token, or null if not yet solved or stale. */
     getResponse(): string | null {
-        return this.status === 'solved' ? this.token : null;
+        if (this.status !== 'solved' || !this.token) {
+            return null;
+        }
+
+        // Auto-renew tokens older than 240 seconds (backend TTL is 300s)
+        if (this.solvedAt && Date.now() - this.solvedAt > 240_000) {
+            this.retry();
+            return null;
+        }
+
+        return this.token;
     }
 
     getStatus(): PowStatus {

@@ -65,18 +65,36 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         }
     });
 
-    const checkAndBlock = function (this: any, e?: Event) {
+    const checkAndBlock = async function (this: any, e?: Event) {
         if (!isEnabled(enabledKey)) return true;
         if (skipCaptcha.call(this)) return true;
 
-        const status = this.powCaptchaState?.getStatus();
-        if (status !== 'solved') {
+        if (this.powCaptchaState && this.powCaptchaState.getStatus() === 'idle') {
+            this.powCaptchaState.start();
+        }
+
+        let status = this.powCaptchaState?.getStatus();
+
+        // If challenge is currently loading or solving, wait up to 4s for it to finish
+        if (status === 'loading' || status === 'solving') {
+            const startWait = Date.now();
+            while ((status === 'loading' || status === 'solving') && Date.now() - startWait < 4000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                status = this.powCaptchaState?.getStatus();
+            }
+        }
+
+        if (status !== 'solved' || !this.powCaptchaState?.getResponse()) {
             if (e && typeof e.preventDefault === 'function') {
                 e.preventDefault();
                 e.stopPropagation();
             }
             this.loading = false;
             m.redraw();
+
+            if (status === 'error' || status === 'idle') {
+                this.powCaptchaState?.retry();
+            }
 
             // Show a top-level alert preventing submission before challenge is resolved
             app.alerts.show(
@@ -88,22 +106,32 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
         return true;
     };
 
+    const wrapSubmit = function (this: any, original: any, e: Event) {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        checkAndBlock.call(this, e).then((canSubmit) => {
+            if (canSubmit) {
+                original.call(this, e);
+            }
+        });
+    };
+
     override(prototype, 'onsubmit', function (this: any, original: any, e: Event) {
-        if (!checkAndBlock.call(this, e)) return;
-        return original.call(this, e);
+        return wrapSubmit.call(this, original, e);
     });
 
     if (typeof prototype.onSubmit === 'function') {
         override(prototype, 'onSubmit', function (this: any, original: any, e: Event) {
-            if (!checkAndBlock.call(this, e)) return;
-            return original.call(this, e);
+            return wrapSubmit.call(this, original, e);
         });
     }
 
     if (typeof prototype.submit === 'function') {
         override(prototype, 'submit', function (this: any, original: any, e: Event) {
-            if (!checkAndBlock.call(this, e)) return;
-            return original.call(this, e);
+            return wrapSubmit.call(this, original, e);
         });
     }
 }

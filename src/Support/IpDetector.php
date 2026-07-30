@@ -12,10 +12,18 @@ class IpDetector
      */
     public static function detect(?ServerRequestInterface $request = null, $config = null): string
     {
+        // Flarum's native resolved IP attribute takes absolute priority when available
+        if ($request !== null) {
+            $flarumIp = $request->getAttribute('ipAddress');
+            if (is_string($flarumIp) && filter_var($flarumIp, FILTER_VALIDATE_IP)) {
+                return $flarumIp;
+            }
+        }
+
         $serverParams = $request?->getServerParams() ?? $_SERVER;
         $remoteAddr = (string) ($serverParams['REMOTE_ADDR'] ?? '');
 
-        // If flarum config specifies proxy headers to trust, we can check.
+        // If flarum config specifies proxy headers to trust, we check.
         // Flarum uses config.php 'proxy_headers' or 'proxy_all'.
         $trustProxy = false;
         if (!empty($config) && (is_array($config) || $config instanceof \ArrayAccess)) {
@@ -26,26 +34,13 @@ class IpDetector
             }
         }
 
-        // Flarum's native resolved IP attribute
-        if ($request !== null) {
-            $flarumIp = $request->getAttribute('ipAddress');
-            if (is_string($flarumIp) && $flarumIp !== '') {
-                if ($trustProxy) {
-                    return $flarumIp;
-                }
-                // If they don't trust proxies, be conservative and verify
-                // that the flarumIp isn't different, or fallback to REMOTE_ADDR
-                return filter_var($remoteAddr, FILTER_VALIDATE_IP) ? $remoteAddr : $flarumIp;
-            }
-        }
-
         // Standard proxy fallback parsing when request attribute is not available
         if ($trustProxy) {
-            $headers = ['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'HTTP_X_REAL_IP'];
+            $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'HTTP_X_REAL_IP'];
             foreach ($headers as $header) {
                 if (!empty($serverParams[$header])) {
                     $ips = explode(',', $serverParams[$header]);
-                    $ip = trim(end($ips));
+                    $ip = trim(reset($ips)); // Leftmost IP is the originating client
                     if (filter_var($ip, FILTER_VALIDATE_IP)) {
                         return $ip;
                     }
