@@ -23,6 +23,7 @@ export default class PowCaptchaState {
     private token: string | null = null;
     private aborted = false;
     private currentRunId = 0;
+    private settledListeners: Array<(status: PowStatus) => void> = [];
 
     // ─── Public API ───────────────────────────────────────────────────
 
@@ -55,11 +56,13 @@ export default class PowCaptchaState {
             this.solvedAt = Date.now();
             this.status = 'solved';
             m.redraw();
+            this.notifySettled();
         } catch (err: any) {
             if (this.aborted || runId !== this.currentRunId) return;
             this.status = 'error';
             this.errorMessage = err?.message ?? String(err);
             m.redraw();
+            this.notifySettled();
         }
     }
 
@@ -82,6 +85,45 @@ export default class PowCaptchaState {
         return this.status;
     }
 
+    /**
+     * Promise that resolves when the state is no longer 'loading' or 'solving',
+     * or when timeoutMs elapses.
+     */
+    public async waitUntilSettled(timeoutMs = 4000): Promise<PowStatus> {
+        if (this.status !== 'loading' && this.status !== 'solving') {
+            return this.status;
+        }
+
+        return new Promise<PowStatus>((resolve) => {
+            let timer: any = null;
+
+            const onSettled = (status: PowStatus) => {
+                if (timer) clearTimeout(timer);
+                resolve(status);
+            };
+
+            if (timeoutMs > 0) {
+                timer = setTimeout(() => {
+                    const idx = this.settledListeners.indexOf(onSettled);
+                    if (idx !== -1) {
+                        this.settledListeners.splice(idx, 1);
+                    }
+                    resolve(this.status);
+                }, timeoutMs);
+            }
+
+            this.settledListeners.push(onSettled);
+        });
+    }
+
+    private notifySettled(): void {
+        if (this.status !== 'loading' && this.status !== 'solving') {
+            const listeners = [...this.settledListeners];
+            this.settledListeners = [];
+            listeners.forEach((resolve) => resolve(this.status));
+        }
+    }
+
     /** Reset to idle so start() can be called again. */
     reset(): void {
         this.aborted = true;
@@ -91,6 +133,7 @@ export default class PowCaptchaState {
         this.errorMessage = null;
         this.honeypotValue = '';
         m.redraw();
+        this.notifySettled();
     }
 
     /** Convenience: reset then start a new challenge. */
