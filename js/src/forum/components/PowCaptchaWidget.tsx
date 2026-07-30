@@ -18,40 +18,13 @@ interface PowCaptchaWidgetAttrs extends ComponentAttrs {
  *  error    → ✗ icon + error message + Retry button
  */
 export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
-    cleanupInteractionListeners?: () => void;
-
     oncreate(vnode: any) {
         super.oncreate(vnode);
-
-        const state = this.attrs.state;
-        let started = false;
-
-        const trigger = () => {
-            if (started) return;
-            started = true;
-            cleanup();
-            state.start();
-        };
-
-        const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart', 'focusin'];
-        
-        const cleanup = () => {
-            events.forEach(event => {
-                document.removeEventListener(event, trigger, { capture: true });
-            });
-        };
-
-        this.cleanupInteractionListeners = cleanup;
-
-        events.forEach(event => {
-            document.addEventListener(event, trigger, { passive: true, capture: true });
-        });
+        // Start solving immediately as soon as the modal widget is mounted
+        this.attrs.state.start();
     }
 
     onremove(vnode: any) {
-        if (this.cleanupInteractionListeners) {
-            this.cleanupInteractionListeners();
-        }
         this.attrs.state.reset();
     }
 
