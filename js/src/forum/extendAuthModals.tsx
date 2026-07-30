@@ -75,13 +75,9 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string):
 
         let status = this.powCaptchaState?.getStatus();
 
-        // If challenge is currently loading or solving, wait up to 4s for it to finish
-        if (status === 'loading' || status === 'solving') {
-            const startWait = Date.now();
-            while ((status === 'loading' || status === 'solving') && Date.now() - startWait < 4000) {
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                status = this.powCaptchaState?.getStatus();
-            }
+        // If challenge is currently loading or solving, wait until settled (up to 4s)
+        if ((status === 'loading' || status === 'solving') && this.powCaptchaState) {
+            status = await this.powCaptchaState.waitUntilSettled(4000);
         }
 
         if (status !== 'solved' || !this.powCaptchaState?.getResponse()) {
