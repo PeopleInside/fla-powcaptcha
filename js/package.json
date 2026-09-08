@@ -14,10 +14,10 @@
     },
     "overrides": {
         "@babel/core": "7.29.6",
-        "fast-uri": "^3.1.5"
+        "fast-uri": "^3.1.7"
     },
     "resolutions": {
-        "fast-uri": "^3.1.5"
+        "fast-uri": "^3.1.7"
     },
     "scripts": {
         "dev": "webpack --mode development --watch",
