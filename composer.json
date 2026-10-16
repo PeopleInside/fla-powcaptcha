@@ -21,6 +21,10 @@
         "flarum/core": "^1.8 || ^2.0",
         "psr/log": "^1.0 || ^2.0 || ^3.0"
     },
+    "suggest": {
+        "fof/anti-spam": "Reduce spam on new registrations",
+        "peopleinside/flarum-ext-antiflood": "Control and block flooding"
+    },
     "autoload": {
         "psr-4": {
             "PeopleInside\\PowCaptcha\\": "src/"
