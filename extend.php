@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/autoload.php';
+
 use Flarum\Api\Middleware\ThrottleApi;
 use Flarum\Api\ForgotPasswordValidator;
 use Flarum\Extend;

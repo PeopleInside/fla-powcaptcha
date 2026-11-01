@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.1
+
+- Added a safety-net autoloader (`autoload.php`): if the extension files are replaced by hand or Composer's optimized classmap is stale, the forum no longer fails to boot with `Class "…\PowServiceProvider" not found`. After a manual update you should still run `composer dump-autoload`.
+
 ## 3.8.0
 
 ### Security
