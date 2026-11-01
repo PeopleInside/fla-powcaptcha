@@ -2,163 +2,194 @@
 
 namespace PeopleInside\PowCaptcha\Service;
 
-use Flarum\Foundation\Config;
-use Flarum\Settings\SettingsRepositoryInterface;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Contracts\Container\Container;
-use PeopleInside\PowCaptcha\Support\IpDetector;
+use PeopleInside\PowCaptcha\Support\CacheGuard;
+use PeopleInside\PowCaptcha\Support\ClientContext;
+use PeopleInside\PowCaptcha\Support\Ip;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Log\LoggerInterface;
 
+/**
+ * Issues and verifies stateless, signed Proof-of-Work challenges.
+ *
+ * Challenge format (no ':' inside, so `challenge:nonce` stays unambiguous):
+ *
+ *     v1.<rand16>.<issuedAt>.<difficulty>.<action>.<bound>.<mac>
+ *
+ * The MAC is an HMAC-SHA256 (keyed with a per-installation secret) over everything
+ * before it plus, for "bound" challenges, the client network bucket. Therefore the
+ * server stores nothing when it issues a challenge, the difficulty and the form the
+ * challenge was issued for cannot be altered by the client, and the only cache write
+ * on the success path is the single-use marker.
+ *
+ * The client must find a nonce so that SHA-256("<challenge>:<nonce>") starts with
+ * <difficulty> hexadecimal zeros.
+ */
 class PowTokenVerifier
 {
-    public const CHALLENGE_CACHE_PREFIX = 'powcaptcha:chal:';
-    public const MAX_DIFFICULTY = 8;
+    public const VERSION = 'v1';
+    public const TTL_SECONDS = 300;
+    public const MAX_TOKEN_LENGTH = 200;
 
-    private ?string $cachedInstancePrefix = null;
+    /** Form → single-letter code embedded (and signed) in the challenge. */
+    public const ACTIONS = ['login' => 'l', 'signup' => 's', 'forgot' => 'f', 'token' => 't'];
+
+    /** Minimum seconds between challenge issue and submit ("time trap"). */
+    private const MIN_AGE_SECONDS = ['signup' => 2];
+
+    private const CHALLENGE_PATTERN = '/^v1\.([0-9a-f]{16})\.(\d{9,11})\.([3-9])\.([lsft])\.([01])\.([0-9a-f]{32})$/';
 
     public function __construct(
-        private readonly CacheRepository $cache,
-        private readonly SettingsRepositoryInterface $settings,
-        private readonly Config $config,
-        private readonly Container $container,
-        private readonly LoggerInterface $logger
+        private readonly PowSettings $settings,
+        private readonly RiskTracker $risk,
+        private readonly EventLogger $logger,
+        private readonly CacheGuard $cache,
+        private readonly ClientContext $context
     ) {
     }
 
-    public function verifyToken(string $token, int $difficulty, ?ServerRequestInterface $request = null): bool
+    /**
+     * @return array{challenge:string,difficulty:int,ttl:int}
+     */
+    public function issue(string $action, ?ServerRequestInterface $request = null): array
     {
-        $parts = explode(':', $token, 2);
-
-        if (count($parts) !== 2) {
-            return false;
+        if (! isset(self::ACTIONS[$action])) {
+            throw new \InvalidArgumentException('Unknown action');
         }
 
-        [$challenge, $nonce] = $parts;
+        $ip = $this->clientIp($request);
+        $bump = $this->risk->bump($ip, $action);
+        $difficulty = min($this->settings->maxDifficulty(), $this->settings->baseDifficulty() + $bump);
 
-        if (!ctype_xdigit($challenge) || strlen($challenge) !== 32) {
-            return false;
-        }
+        // Challenges handed to networks that already look abusive are tied to that
+        // network, so they cannot be requested from a clean IP and used from a dirty one.
+        // Normal visitors are never bound: no false failures when the IP changes
+        // between challenge and submit (dual-stack, mobile networks).
+        $bound = $bump > 0 && Ip::isPublic($ip);
 
-        if (!ctype_digit($nonce)) {
-            return false;
-        }
+        $payload = implode('.', [
+            self::VERSION,
+            bin2hex(random_bytes(8)),
+            $this->now(),
+            $difficulty,
+            self::ACTIONS[$action],
+            $bound ? '1' : '0',
+        ]);
 
-        $hash           = hash('sha256', $challenge . ':' . $nonce);
-        $requiredPrefix = str_repeat('0', self::normalizeDifficulty($difficulty));
-
-        if (!str_starts_with($hash, $requiredPrefix)) {
-            return false;
-        }
-
-        $cacheKey = $this->getChallengeCacheKey($challenge);
-
-        // Fail-closed security posture:
-        // In case of a cache connection or operational failure, we explicitly choose to FAIL CLOSED.
-        // Allowing the request to pass (fail-open) would allow attackers/bots to bypass the CAPTCHA check
-        // entirely by hammering the site and triggering cache connection exhaustion or utilizing transient cache failures.
-        // Therefore, we reject the verification attempt, log a high-priority error for administrators, and return false.
-        try {
-            $storedIpHash = $this->cache->pull($cacheKey);
-        } catch (\Throwable $e) {
-            $this->logger->error(
-                '[fla-powcaptcha] Cache operational failure during challenge verification (failing closed): ' . $e->getMessage(),
-                ['exception' => $e]
-            );
-            return false;
-        }
-
-        if ($storedIpHash === null) {
-            return false;
-        }
-
-        $currentIp = $this->getCurrentRequestIp($request);
-
-        return hash_equals((string) $storedIpHash, hash('sha256', $currentIp));
-    }
-
-    public function getChallengeCacheKey(string $challenge): string
-    {
-        return $this->getUniqueInstancePrefix() . ':' . self::CHALLENGE_CACHE_PREFIX . $challenge;
-    }
-
-    private function getUniqueInstancePrefix(): string
-    {
-        if ($this->cachedInstancePrefix !== null) {
-            return $this->cachedInstancePrefix;
-        }
-
-        $uniqueString = ($this->config['url'] ?? '') . ':' . ($this->config['database']['database'] ?? '');
-        $configHash = hash('sha256', $uniqueString);
-
-        $installedId = $this->settings->get('peopleinside-powcaptcha.installation_id');
-        if (empty($installedId)) {
-            $installedId = bin2hex(random_bytes(16));
-            $this->settings->set('peopleinside-powcaptcha.installation_id', $installedId);
-        }
-
-        return $this->cachedInstancePrefix = hash('sha256', $configHash . ':' . $installedId);
+        return [
+            'challenge' => $payload . '.' . $this->mac($payload, $bound ? Ip::bucket($ip) : ''),
+            'difficulty' => $difficulty,
+            'ttl' => self::TTL_SECONDS,
+        ];
     }
 
     /**
-     * Resolve the current client IP for binding challenges/tokens.
-     *
-     * If detection yields an empty string (e.g. a reverse proxy that doesn't
-     * set REMOTE_ADDR and isn't covered by the configured proxy_headers /
-     * proxy_all keys), we log a warning so admins have a diagnostic path
-     * instead of silently seeing 429s with no explanation. See README for
-     * the config.php keys required behind a reverse proxy.
+     * Verifies a `challenge:nonce` token for the given form, consuming it on success.
+     * Every outcome feeds the anonymous event log and the abuse counters.
      */
-    public function getCurrentRequestIp(?ServerRequestInterface $request = null): string
+    public function verify(string $token, string $action, ?ServerRequestInterface $request = null): VerifyResult
     {
-        $ip = $this->resolveIp($request);
+        $ip = $this->clientIp($request);
+        $result = $this->evaluate($token, $action, $ip);
 
-        if ($ip === '') {
-            $this->logger->warning(
-                '[fla-powcaptcha] Unable to determine client IP address. ' .
-                'If this server is behind a reverse proxy/load balancer, set the ' .
-                "'proxy_headers' or 'proxy_all' keys in config.php, otherwise PoW " .
-                'challenges will be rejected for all visitors. See the extension README.'
-            );
-        }
+        $this->finish($result, $action, $ip);
 
-        return $ip;
+        return $result;
     }
 
-    private function resolveIp(?ServerRequestInterface $request = null): string
+    /** Records a honeypot hit as a failed attempt. */
+    public function rejectHoneypot(string $action, ?ServerRequestInterface $request = null): VerifyResult
     {
-        if ($request !== null) {
-            return IpDetector::detect($request, $this->config);
+        $result = new VerifyResult(false, 'honeypot');
+
+        $this->finish($result, $action, $this->clientIp($request));
+
+        return $result;
+    }
+
+    protected function now(): int
+    {
+        return time();
+    }
+
+    private function evaluate(string $token, string $action, string $ip): VerifyResult
+    {
+        if ($token === '') {
+            return new VerifyResult(false, 'missing');
         }
 
+        $separator = strrpos($token, ':');
+
+        if (strlen($token) > self::MAX_TOKEN_LENGTH || $separator === false) {
+            return new VerifyResult(false, 'malformed');
+        }
+
+        $challenge = substr($token, 0, $separator);
+        $nonce = substr($token, $separator + 1);
+
+        if (! preg_match(self::CHALLENGE_PATTERN, $challenge, $m)
+            || $nonce === '' || strlen($nonce) > 12 || ! ctype_digit($nonce)
+        ) {
+            return new VerifyResult(false, 'malformed');
+        }
+
+        [, $rand, $issuedAt, $difficulty, $code, $bound, $mac] = $m;
+        $difficulty = (int) $difficulty;
+
+        if (! isset(self::ACTIONS[$action]) || $code !== self::ACTIONS[$action]) {
+            return new VerifyResult(false, 'wrong_action', $difficulty);
+        }
+
+        $payload = substr($challenge, 0, -33); // strip ".<mac>"
+        $bucket = $bound === '1' ? Ip::bucket($ip) : '';
+
+        if (! hash_equals($this->mac($payload, $bucket), $mac)) {
+            return new VerifyResult(false, $bound === '1' ? 'wrong_network' : 'bad_signature', $difficulty);
+        }
+
+        $age = $this->now() - (int) $issuedAt;
+
+        if ($age > self::TTL_SECONDS) {
+            return new VerifyResult(false, 'expired', $difficulty);
+        }
+
+        if ($age < 0 || $age < (self::MIN_AGE_SECONDS[$action] ?? 0)) {
+            return new VerifyResult(false, 'too_fast', $difficulty);
+        }
+
+        if (! str_starts_with(hash('sha256', $challenge . ':' . $nonce), str_repeat('0', $difficulty))) {
+            return new VerifyResult(false, 'bad_solution', $difficulty);
+        }
+
+        // Single use. Fail CLOSED on any cache problem: letting requests through when the
+        // cache is down would let bots bypass the captcha by exhausting the cache.
         try {
-            if ($this->container->bound(ServerRequestInterface::class)) {
-                $resolvedRequest = $this->container->make(ServerRequestInterface::class);
-                if ($resolvedRequest instanceof ServerRequestInterface) {
-                    return IpDetector::detect($resolvedRequest, $this->config);
-                }
-            }
+            $first = $this->cache->once($this->risk->instancePrefix() . 'used:' . $rand, self::TTL_SECONDS + 60);
         } catch (\Throwable $e) {
-            // Intentionally broad: this is a best-effort fallback for contexts with
-            // no HTTP request bound (e.g. CLI/queue). Any resolution failure here
-            // must not break the caller; we fall through to IpDetector::detect(null, ...).
+            return new VerifyResult(false, 'cache_error', $difficulty);
         }
 
-        return IpDetector::detect(null, $this->config);
+        return $first ? new VerifyResult(true, 'ok', $difficulty) : new VerifyResult(false, 'replayed', $difficulty);
     }
 
-    public static function normalizeDifficulty(int $difficulty): int
+    private function finish(VerifyResult $result, string $action, string $ip): void
     {
-        // Difficulty values 1 and 2 are from the old scheme and no longer valid.
-        // Map them to their nearest equivalent in the new 3-level scheme (3/4/5):
-        // old 1 → new 3 (Easy), old 2 → new 4 (High).
-        if ($difficulty === 1) {
-            return 3;
+        if ($result->ok) {
+            $this->risk->recordSuccess($ip, $action);
+        } else {
+            $this->risk->recordFailure($ip);
         }
-        if ($difficulty === 2) {
-            return 4;
-        }
-        // Any other out-of-range value is clamped to the valid range [3, MAX_DIFFICULTY].
-        return max(3, min(self::MAX_DIFFICULTY, $difficulty));
+
+        $this->logger->record($action, $result->ok, $result->reason, $result->difficulty);
+    }
+
+    private function mac(string $payload, string $bucket): string
+    {
+        return substr(hash_hmac('sha256', $payload . '|' . $bucket, $this->settings->secret()), 0, 32);
+    }
+
+    private function clientIp(?ServerRequestInterface $request): string
+    {
+        $ip = Ip::fromRequest($request);
+
+        return $ip !== '' ? $ip : $this->context->ip();
     }
 }

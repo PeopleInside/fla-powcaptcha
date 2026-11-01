@@ -5,20 +5,21 @@ namespace PeopleInside\PowCaptcha\Api;
 use Flarum\Api\Context;
 use Flarum\Api\Schema;
 use Flarum\Locale\Translator;
-use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
 use Illuminate\Support\Arr;
+use PeopleInside\PowCaptcha\Service\PowSettings;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 use PeopleInside\PowCaptcha\Support\CaptchaTokenExtractor;
 
 /**
- * Registers a transient captchaToken attribute on user creation (Flarum 2.x JSON:API).
+ * Flarum 2.x: registers the transient `captchaToken` and honeypot attributes on user
+ * creation. Neither is ever persisted.
  */
 class RegisterUserCaptchaFields
 {
     public function __construct(
-        private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly PowSettings $settings,
+        private readonly PowTokenVerifier $verifier,
         private readonly Translator $translator
     ) {
     }
@@ -26,7 +27,7 @@ class RegisterUserCaptchaFields
     public function __invoke(): array
     {
         return [
-            Schema\Str::make('email_confirmation')
+            Schema\Str::make(CaptchaTokenExtractor::HONEYPOT_FIELD)
                 ->visible(false)
                 ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
                 ->save(fn () => null),
@@ -37,22 +38,17 @@ class RegisterUserCaptchaFields
                 ->required(fn (Context $context) => $this->shouldValidate($context))
                 ->rule(
                     function (Context $context) {
-                        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
                         $request = $context->request;
 
-                        return function (string $attribute, mixed $value, \Closure $fail) use ($difficulty, $request, $context): void {
-                            $bodyData = $context->body();
-                            $honeypot = Arr::get($bodyData, 'data.attributes.email_confirmation')
-                                ?? Arr::get($bodyData, 'email_confirmation')
-                                ?? Arr::get($bodyData, 'data.email_confirmation');
+                        return function (string $attribute, mixed $value, \Closure $fail) use ($context, $request): void {
+                            $body = Arr::get($context->body(), 'data', []);
 
-                            if (!empty($honeypot)) {
-                                $fail($this->validationMessage());
-                                return;
-                            }
+                            $result = CaptchaTokenExtractor::honeypotValue($body) !== ''
+                                ? $this->verifier->rejectHoneypot('signup', $request)
+                                : $this->verifier->verify(is_string($value) ? $value : '', 'signup', $request);
 
-                            if (! is_string($value) || ! $this->tokenVerifier->verifyToken($value, $difficulty, $request)) {
-                                $fail($this->validationMessage());
+                            if (! $result->ok) {
+                                $fail($this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'));
                             }
                         };
                     },
@@ -64,29 +60,10 @@ class RegisterUserCaptchaFields
 
     private function shouldValidate(Context $context): bool
     {
-        if (! $context->creating()) {
+        if (! $context->creating() || ! $this->settings->enabledFor('signup') || $context->getActor()->isAdmin()) {
             return false;
         }
 
-        if (! $this->settings->get('peopleinside-powcaptcha.enabled_signup', true)) {
-            return false;
-        }
-
-        if ($context->getActor()->isAdmin()) {
-            return false;
-        }
-
-        $bodyData = Arr::get($context->body(), 'data', []);
-
-        if (CaptchaTokenExtractor::usesOAuthRegistrationToken($bodyData)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function validationMessage(): string
-    {
-        return $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha');
+        return ! CaptchaTokenExtractor::usesOAuthRegistrationToken(Arr::get($context->body(), 'data', []));
     }
 }

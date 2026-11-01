@@ -7,22 +7,25 @@ A **local Proof-of-Work CAPTCHA** extension for [Flarum](https://flarum.org/) th
 
 ## How it works
 
-1. When an auth modal opens, the browser silently fetches a one-time **challenge** from the Flarum API.
-2. The browser solves a SHA-256 hash puzzle (finds a nonce *N* such that `SHA-256(challenge:N)` starts with *D* hex zeros, where *D* is the configured difficulty).
-3. The solution token `challenge:nonce` is appended to the form submission.
-4. The server verifies the solution and rejects the request if the check fails.
+1. When an auth modal opens, the browser silently asks the Flarum API for a **challenge** for that specific form (login, sign-up, password reset).
+2. The server returns a signed, stateless challenge. Its difficulty, issue time and form are protected by an HMAC, so the browser cannot alter them and the server stores nothing at this point.
+3. The browser solves a SHA-256 puzzle (finds a nonce *N* such that `SHA-256(challenge:N)` starts with *D* hex zeros).
+4. The token `challenge:nonce` is sent with the form. The server checks the signature, the form, the age, the work done and that the token has never been used (atomically), and rejects the request otherwise.
 
-Bots must solve the same puzzle for every request; legitimate users complete it invisibly in the background (< 100 ms at the default difficulty).
+Bots must repeat the work for every single request, and the work grows automatically for networks that misbehave (see *Adaptive difficulty*).
 
 ## Features
 
-- 🔒 **No external services** – fully self-hosted
-- ⚡ **Invisible to users** – solved automatically while they fill the form
-- ⚙️ **Configurable difficulty** – 3 levels (~100 ms → ~10 s)
-- 🌓 **Dark / light mode** – widget adapts to Flarum's current theme
-- 🌍 **Italian & English** – auto-detected; add more locales in `locale/`
-- 🔁 **Replay-proof** – each challenge is single-use (stored in Flarum's cache)
-- ✅ **Flarum 1.x and 2.x** compatible
+- 🔒 **No external services** – fully self-hosted, no cookies
+- ⚡ **Invisible to users** – solved in the background while they fill in the form
+- 🧮 **Three difficulty levels** – plus **adaptive difficulty** that raises the work (up to +2 steps) for networks with repeated failures or many sign-ups, and +1 for everyone during a site-wide attack
+- ✍️ **Signed stateless challenges** – difficulty and form cannot be forged; a login token cannot be used on the sign-up form
+- 🔁 **Atomic single use** – a token can be consumed only once, even with parallel requests (uses a cache lock when available)
+- 🪤 **Honeypot and time trap** – invisible traps for form-filling bots (sign-up must take at least 2 s)
+- 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
+- 📋 **Anonymous event log** in the admin panel – last 30 passed / 30 failed checks, **no IP address or personal data**, self-pruning, with a *Clear log* button
+- ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
+- 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 1.x and 2.x
 
 ## Requirements
 
@@ -64,7 +67,11 @@ composer require peopleinside/fla-powcaptcha:2.3
 
 ```bash
 composer update peopleinside/fla-powcaptcha
+php flarum migrate
+php flarum cache:clear
 ```
+
+`migrate` is required: it creates the log table and converts the old difficulty setting (see *Upgrading from 3.7.x*).
 
 ## How to remove
 
@@ -76,48 +83,59 @@ Then enable the extension in the Flarum admin panel.
 
 ## Configuration
 
-Go to **Admin → Extensions → PoW CAPTCHA** and choose:
+Go to **Admin → Extensions → PoW CAPTCHA**.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Enable on Login | ✓ | Protect the login form |
-| Enable on Registration | ✓ | Protect the sign-up form |
-| Enable on Password Reset | ✓ | Protect the forgot-password form |
-| Difficulty | 4 – High (~1 s) | SHA-256 leading-zero count (3–5) |
+| Enable on Login / Registration / Password Reset | on | Which forms are protected |
+| Difficulty level | 2 – Balanced | Level 1 = 3 hex zeros (~4k hashes), level 2 = 4 (~65k), level 3 = 5 (~1M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s (phones are 3–6× slower) |
+| Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
+| Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
+| Keep an anonymous event log | on | Last 30 passed + 30 failed checks, no personal data |
+
+### Upgrading from 3.7.x
+
+The old *difficulty* setting (3/4/5) is converted once, by a migration, to the new level (1/2/3) with **exactly the same real difficulty**: old 1 or 3 → level 1, old 2 or 4 → level 2, old 5 → level 3. The old value is left in the database, so downgrading still works. Run `php flarum migrate` and `php flarum cache:clear` after updating.
+
+### Protecting `/api/token`
+
+Flarum's login form posts to `/login`, which calls `/api/token` internally, so a bot that calls `/api/token` directly never meets the login CAPTCHA. With this option on, direct calls must include `captchaToken` (and no value in `pow_website`) obtained from `GET /api/powcaptcha/challenge?action=token`. Turn it off if mobile apps or integrations log in through the API. It only takes effect on Flarum core versions that mark internal API calls (`RequestUtil::isInternal`); on older cores it is simply inactive, never blocking the normal form. Flarum's own login throttler (5 failed attempts per minute per account and IP) keeps applying in all cases.
 
 ## Development (for contributors only)
 
-The extension is distributed with pre-compiled frontend assets (`js/dist/*`), so **no JS build step is required** to install or use it on Flarum 2.x.
-
-After upgrading from an older release on **Flarum 1.8**, rebuild the forum bundle so auth modals are extended correctly:
+The extension ships with pre-compiled frontend assets (`js/dist/*`), so no build step is needed to install or use it. **Always rebuild `js/dist` before tagging a release** so the shipped bundle matches `js/src`:
 
 ```bash
-cd vendor/peopleinside/fla-powcaptcha/js
-npm install
+cd js
+npm ci
 npm run build
-php flarum cache:clear
 ```
+
+The PHP logic is covered by plain-PHP tests under `tests/` (no Flarum installation required): `php tests/run.php`.
 
 ## Security Notes
 
-- Each challenge is valid for **5 minutes** and is **single-use** (deleted after successful verification).
-- The challenge is a 128-bit cryptographically random value; it cannot be guessed or forged.
-- The server independently re-computes the SHA-256 hash to verify the solution.
+- Challenges are valid for **5 minutes**, signed with HMAC-SHA256 using a per-installation secret (created on install, stored in the settings table), and **single use**.
+- The server recomputes the hash itself; difficulty and form come from the signed challenge, never from the client.
+- Fail-closed: if the cache is unavailable, verification fails instead of letting requests through.
+- Challenges issued to networks that already look abusive are bound to that network, so they cannot be requested from a clean IP and used from a dirty one. Normal visitors are never bound (no problems with dual-stack or mobile networks).
+- Challenge requests are rate limited (30 per minute per IPv4 address or IPv6 /64).
+- **Limits you should know about**: Proof-of-Work raises the cost of every request but does not tell humans from bots, and it does not stop a determined attacker with a headless browser or a native SHA-256 solver. Combine it with e-mail confirmation, approval of first posts and reputation checks. On busy sites prefer Redis / APCu / Memcached over the `file` cache: the file driver does not delete expired entries on its own.
+
+### Anonymous log and privacy
+
+The log stores only time, form, outcome, a technical reason and difficulty. It never stores IP addresses (not even truncated or hashed), user agents, usernames or e-mail addresses. Abuse counters used for rate limiting and adaptive difficulty live in the cache, are keyed by an HMAC of the network (never the raw IP) and expire within minutes. Even so, mention the CAPTCHA in your privacy policy; this is not legal advice.
 
 ## Running Behind a Reverse Proxy / Load Balancer
 
-Challenges and tokens are bound to the visitor's IP address. If your Flarum instance sits
-behind a reverse proxy or load balancer that does not populate `REMOTE_ADDR` with the real
-client IP, you **must** set one of the following keys in your `config.php` so Flarum (and
-this extension) can resolve the correct IP from forwarded headers:
+**Important:** this extension (like Flarum core) uses the connection's `REMOTE_ADDR` as the client address and deliberately ignores `X-Forwarded-For`, `Client-IP` and similar headers, which anyone can forge. Flarum has **no** `proxy_headers` / `proxy_all` config keys (older versions of this README suggested them mistakenly — they have no effect on core and must not be relied on).
 
-- `'proxy_headers' => true` (or an explicit list of trusted proxy IPs), **or**
-- `'proxy_all' => true`
+If you use a reverse proxy or a CDN, configure the **web server** so `REMOTE_ADDR` carries the real visitor address, for example:
 
-If neither is set and the server also can't fall back to `REMOTE_ADDR`, IP resolution
-returns empty and this extension will reject all challenge requests with a `429` to fail
-safe. A warning is logged in that case (`[fla-powcaptcha] ...`) — check your Flarum log if
-users report being unable to log in, register, or reset their password.
+- nginx: `set_real_ip_from <proxy CIDR>; real_ip_header X-Forwarded-For;` (or `CF-Connecting-IP` for Cloudflare) with `real_ip_recursive on;`
+- Apache: `mod_remoteip` with `RemoteIPHeader` and `RemoteIPTrustedProxy`
+
+If `REMOTE_ADDR` is a private or reserved address (typical when that is not configured), the per-IP features — rate limit, adaptive difficulty and network binding — are **switched off automatically** instead of treating all visitors as one; the CAPTCHA itself keeps working.
 
 ## License
 
