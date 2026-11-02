@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.3
+
+- **Fixed the real cause of the boot crash** (`Uncaught TypeError: Cannot read properties of undefined (reading 'extend')` in `Application.bootExtensions`). Flarum wraps each extension bundle as `var module={}; <bundle> flarum.extensions['…']=module.exports;`, but the rebuilt bundles never assigned `module.exports`, so the extension was registered as `undefined`. Both `forum.js` and `admin.js` now end by setting `module.exports` (webpack footer in `js/webpack.config.js`), like the previous stable release did. 3.8.2 fixed two real but secondary problems only (lazy-loaded modals, unavailable `icon` helper).
+- Added `tests/js/run.sh`: loads the shipped bundles exactly like Flarum does (PHP wrapper + core `bootExtensions`) and runs a functional smoke test with lazy modals. It reproduces the crash on the 3.8.2 bundles and passes on the stable 3.7.0 and on this release. Run it before every release.
+
 ## 3.8.2
 
 - **Fixed: the forum JavaScript crashed at boot on Flarum 2.x** ("Something went wrong while trying to load the full version of this site"), caused by two mistakes in 3.8.0/3.8.1:

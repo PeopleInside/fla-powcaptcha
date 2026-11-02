@@ -111,7 +111,7 @@ npm ci
 npm run build
 ```
 
-The PHP logic is covered by plain-PHP tests under `tests/` (no Flarum installation required): `php tests/run.php`.
+The PHP logic is covered by plain-PHP tests (no Flarum installation required): `php tests/run.php`. After every build run `bash tests/js/run.sh` (Node only): it loads the shipped bundles the way Flarum does and catches boot-time crashes before they reach a forum.
 
 ## Security Notes
 
