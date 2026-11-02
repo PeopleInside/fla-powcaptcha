@@ -1719,6 +1719,11 @@ minimist@^1.2.0:
   resolved "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz"
   integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
 
+mithril@2.2.8:
+  version "2.2.8"
+  resolved "https://registry.npmjs.org/mithril/-/mithril-2.2.8.tgz"
+  integrity sha512-P9SP7y22qNdsKKGofrPMvQzTQvUjEH03eENeR5KXTj+rGFyvs+DqZyx3HS5c7K7EMOo0OYmcZnLEY/sc2ybLdQ==
+
 mrmime@^2.0.0:
   version "2.0.1"
   resolved "https://registry.npmjs.org/mrmime/-/mrmime-2.0.1.tgz"

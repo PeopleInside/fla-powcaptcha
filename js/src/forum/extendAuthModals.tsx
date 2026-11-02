@@ -66,11 +66,10 @@ function applyToModal(path: string, enabledKey: string, dataMethod: string, acti
         if (skipCaptcha.call(this)) return;
         if (!this.powCaptchaState) return;
 
-        items.add(
-            'pow-captcha',
-            <PowCaptchaWidget state={this.powCaptchaState} key={this.powCaptchaState.id} />,
-            -5
-        );
+        // No `key` here: the other form fields are unkeyed, and Mithril throws
+        // "In fragments, vnodes must either all have keys or none have keys" when mixed,
+        // which leaves the whole modal body empty.
+        items.add('pow-captcha', <PowCaptchaWidget state={this.powCaptchaState} />, -5);
     });
 
     // Not every modal has an `onerror` (the core sign-up modal does not): extend() copes.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.4
+
+- **Fixed: login, sign-up and password-reset modals rendered empty.** The CAPTCHA widget was added to the form fields with a `key`, while the other fields have none, and Mithril rejects such mixed lists (`In fragments, vnodes must either all have keys or none have keys`), so the whole modal body failed to render. The widget is now added without a key, exactly like the previous stable release.
+- `tests/js` now uses the real Mithril (pinned to 2.2.8, as in Flarum core) and checks that the modal body renders with the widget among unkeyed fields, and that the widget itself renders in all five states. It reproduces the crash on the 3.8.3 bundle and passes on this release. Run `npm ci` in `js/` once, then `bash tests/js/run.sh`.
+
 ## 3.8.3
 
 - **Fixed the real cause of the boot crash** (`Uncaught TypeError: Cannot read properties of undefined (reading 'extend')` in `Application.bootExtensions`). Flarum wraps each extension bundle as `var module={}; <bundle> flarum.extensions['…']=module.exports;`, but the rebuilt bundles never assigned `module.exports`, so the extension was registered as `undefined`. Both `forum.js` and `admin.js` now end by setting `module.exports` (webpack footer in `js/webpack.config.js`), like the previous stable release did. 3.8.2 fixed two real but secondary problems only (lazy-loaded modals, unavailable `icon` helper).

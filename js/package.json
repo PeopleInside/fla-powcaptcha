@@ -5,6 +5,7 @@
     "devDependencies": {
         "flarum-tsconfig": "^2.0.0",
         "flarum-webpack-config": "^3.0.4",
+        "mithril": "2.2.8",
         "typescript": "^5.0.0",
         "webpack": "^5.99.7",
         "webpack-cli": "^6.0.1"
