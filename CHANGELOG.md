@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.2
+
+- **Fixed: the forum JavaScript crashed at boot on Flarum 2.x** ("Something went wrong while trying to load the full version of this site"), caused by two mistakes in 3.8.0/3.8.1:
+  - the auth modals (`LogInModal`, `SignUpModal`, `ForgotPasswordModal`) are lazy-loaded in Flarum 2.x and were imported as classes; they are now extended **by module path**, which Flarum applies when the modal is actually loaded;
+  - the widget imported `flarum/common/helpers/icon`, which the 2.0.x module registry does not export (`No module found for core:common/helpers/icon`); plain markup is used instead.
+- The shipped bundle now requests exactly the same five core modules as the previous stable release.
+- Only the `onsubmit` entry point is wrapped unconditionally; `onSubmit` / `submit` are wrapped only if the modal really has them.
+
 ## 3.8.1
 
 - Added a safety-net autoloader (`autoload.php`): if the extension files are replaced by hand or Composer's optimized classmap is stale, the forum no longer fails to boot with `Class "…\PowServiceProvider" not found`. After a manual update you should still run `composer dump-autoload`.

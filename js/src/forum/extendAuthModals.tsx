@@ -1,17 +1,24 @@
 import app from 'flarum/forum/app';
 import { extend, override } from 'flarum/common/extend';
-import LogInModal from 'flarum/forum/components/LogInModal';
-import SignUpModal from 'flarum/forum/components/SignUpModal';
-import ForgotPasswordModal from 'flarum/forum/components/ForgotPasswordModal';
 import PowCaptchaWidget from './components/PowCaptchaWidget';
 import PowCaptchaState, { PowAction } from './states/PowCaptchaState';
 
 declare const m: any;
+declare const flarum: any;
 
 /** Longest we keep the form waiting for the PoW to finish (ms). */
 const SUBMIT_WAIT_MS = 180_000;
 
-type AuthModal = typeof LogInModal | typeof SignUpModal | typeof ForgotPasswordModal;
+/**
+ * IMPORTANT: on Flarum 2.x the auth modals are LAZY-LOADED chunks (loaded on demand).
+ * They do not exist yet when this extension initialises, so they must be referenced by
+ * module PATH, never imported as classes: `extend()` / `override()` accept a path string and
+ * apply the change as soon as the modal is loaded. Importing the class here would make the
+ * whole forum JavaScript crash at boot.
+ */
+const LOGIN_MODAL = 'flarum/forum/components/LogInModal';
+const SIGNUP_MODAL = 'flarum/forum/components/SignUpModal';
+const FORGOT_MODAL = 'flarum/forum/components/ForgotPasswordModal';
 
 /**
  * Whether a given form type has CAPTCHA enabled (setting serialised to the
@@ -21,34 +28,40 @@ function isEnabled(key: string): boolean {
     return !!app.forum.attribute<boolean>('peopleinside-powcaptcha.' + key);
 }
 
+/** Runs `callback` with the modal's prototype once the (lazy) module is available. */
+function whenLoaded(path: string, callback: (prototype: any) => void): void {
+    const [namespace, id] = flarum.reg.namespaceAndIdFromPath(path);
+
+    flarum.reg.onLoad(namespace, id, (module: any) => {
+        if (module && module.prototype) callback(module.prototype);
+    });
+}
+
 /**
  * Extend an auth modal with the PoW CAPTCHA widget.
- *
- * Uses concrete modal classes so the same bundle works on Flarum 1.8 (extend
- * requires a prototype) and Flarum 2.x (lazy registry paths are optional).
  */
-function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string, action: PowAction): void {
-    const prototype = modal.prototype;
-    const skipCaptcha = modal === SignUpModal
-        ? function (this: any) {
-              return !!this.attrs?.token;
-          }
-        : () => false;
+function applyToModal(path: string, enabledKey: string, dataMethod: string, action: PowAction): void {
+    const skipCaptcha =
+        path === SIGNUP_MODAL
+            ? function (this: any) {
+                  return !!this.attrs?.token;
+              }
+            : () => false;
 
-    extend(prototype, 'oninit', function (this: any) {
+    extend(path, 'oninit', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         this.powCaptchaState = new PowCaptchaState(action);
     });
 
-    extend(prototype, dataMethod, function (this: any, data: Record<string, unknown>) {
+    extend(path, dataMethod, function (this: any, data: Record<string, unknown>) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         data['captchaToken'] = this.powCaptchaState?.getResponse() ?? '';
         data['pow_website'] = this.powCaptchaState?.getHoneypotValue() ?? '';
     });
 
-    extend(prototype, 'fields', function (this: any, items: any) {
+    extend(path, 'fields', function (this: any, items: any) {
         if (!isEnabled(enabledKey)) return;
         if (skipCaptcha.call(this)) return;
         if (!this.powCaptchaState) return;
@@ -57,10 +70,11 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string, 
             'pow-captcha',
             <PowCaptchaWidget state={this.powCaptchaState} key={this.powCaptchaState.id} />,
             -5
-         );
-     });
+        );
+    });
 
-    extend(prototype, 'onerror', function (this: any) {
+    // Not every modal has an `onerror` (the core sign-up modal does not): extend() copes.
+    extend(path, 'onerror', function (this: any) {
         if (!isEnabled(enabledKey)) return;
         // A challenge is single-use: after any server-side error, get a fresh one.
         const status = this.powCaptchaState?.getStatus();
@@ -123,28 +137,27 @@ function applyToModal(modal: AuthModal, enabledKey: string, dataMethod: string, 
         });
     };
 
-    override(prototype, 'onsubmit', function (this: any, original: any, e: Event) {
+    override(path, 'onsubmit', function (this: any, original: any, e: Event) {
         return wrapSubmit.call(this, original, e);
     });
 
-    if (typeof prototype.onSubmit === 'function') {
-        override(prototype, 'onSubmit', function (this: any, original: any, e: Event) {
-            return wrapSubmit.call(this, original, e);
-        });
-    }
-
-    if (typeof prototype.submit === 'function') {
-        override(prototype, 'submit', function (this: any, original: any, e: Event) {
-            return wrapSubmit.call(this, original, e);
-        });
-    }
+    // Other submit entry points exist only in some Flarum versions: wrap them only when present.
+    whenLoaded(path, (prototype) => {
+        for (const name of ['onSubmit', 'submit']) {
+            if (typeof prototype[name] === 'function') {
+                override(prototype, name, function (this: any, original: any, e: Event) {
+                    return wrapSubmit.call(this, original, e);
+                });
+            }
+        }
+    });
 }
 
 /**
  * Wire up the PoW CAPTCHA to all three auth modals.
  */
 export default function extendAuthModals(): void {
-    applyToModal(LogInModal, 'enabledLogin', 'loginParams', 'login');
-    applyToModal(SignUpModal, 'enabledSignup', 'submitData', 'signup');
-    applyToModal(ForgotPasswordModal, 'enabledForgot', 'requestParams', 'forgot');
+    applyToModal(LOGIN_MODAL, 'enabledLogin', 'loginParams', 'login');
+    applyToModal(SIGNUP_MODAL, 'enabledSignup', 'submitData', 'signup');
+    applyToModal(FORGOT_MODAL, 'enabledForgot', 'requestParams', 'forgot');
 }

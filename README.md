@@ -25,7 +25,7 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
 - 📋 **Anonymous event log** in the admin panel – last 30 passed / 30 failed checks, **no IP address or personal data**, self-pruning, with a *Clear log* button
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
-- 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 1.x and 2.x
+- 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
 
 ## Requirements
 

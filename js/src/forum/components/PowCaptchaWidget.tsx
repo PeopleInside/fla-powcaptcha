@@ -1,7 +1,6 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import icon from 'flarum/common/helpers/icon';
 import app from 'flarum/forum/app';
 import type PowCaptchaState from '../states/PowCaptchaState';
 
@@ -60,8 +59,8 @@ export default class PowCaptchaWidget extends Component<Attrs> {
 
                 <div className="PowCaptchaWidget-status" role="status" aria-live="polite" aria-atomic="true">
                     {busy ? <LoadingIndicator size="small" display="inline" /> : null}
-                    {status === 'solved' ? icon('fas fa-check-circle', { 'aria-hidden': 'true' }) : null}
-                    {status === 'error' ? icon('fas fa-exclamation-circle', { 'aria-hidden': 'true' }) : null}
+                    {status === 'solved' ? <i className="icon fas fa-check-circle" aria-hidden="true" /> : null}
+                    {status === 'error' ? <i className="icon fas fa-exclamation-circle" aria-hidden="true" /> : null}
                     <span className="PowCaptchaWidget-label">{label}</span>
                     {status === 'error' ? (
                         <Button className="Button Button--link" onclick={() => state.retry()}>
