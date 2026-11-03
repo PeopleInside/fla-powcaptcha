@@ -1,52 +1,46 @@
 import app from 'flarum/admin/app';
+import LogsPanel from './components/LogsPanel';
+
+type SettingsApi = { registerSetting: (setting: unknown, priority?: number) => SettingsApi | void };
+type Registry = { for: (extensionId: string) => SettingsApi };
+
+const P = 'peopleinside-powcaptcha.';
+const T = 'peopleinside-powcaptcha.admin.settings.';
+const tr = (key: string) => app.translator.trans(T + key);
 
 export default function registerSettings(): void {
-    const appWithSettingsApi = app as unknown as {
-        registry?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
-        extensionData?: { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } };
-    };
+    const appWithSettingsApi = app as unknown as { registry?: Registry; extensionData?: Registry };
 
-    const settingsRegistry = [appWithSettingsApi.registry, appWithSettingsApi.extensionData].find(
-        (candidate): candidate is { for: (extensionId: string) => { registerSetting: (setting: unknown) => void } } =>
-            Boolean(candidate && typeof candidate.for === 'function')
+    // Flarum 2.x exposes `app.registry`, Flarum 1.x `app.extensionData`.
+    const registry = [appWithSettingsApi.registry, appWithSettingsApi.extensionData].find(
+        (candidate): candidate is Registry => Boolean(candidate && typeof candidate.for === 'function')
     );
 
-    if (!settingsRegistry) {
-        return;
+    if (!registry) return;
+
+    const settings = registry.for('peopleinside-fla-powcaptcha');
+
+    for (const key of ['enabled_login', 'enabled_signup', 'enabled_forgot']) {
+        settings.registerSetting({ setting: P + key, type: 'bool', label: tr(key + '_label'), help: tr(key + '_help') });
     }
 
-    const settings = settingsRegistry.for('peopleinside-fla-powcaptcha');
-
+    // Stored values are the levels 1–3 (the server maps them to the real work required).
     settings.registerSetting({
-        setting: 'peopleinside-powcaptcha.enabled_login',
-        type: 'bool',
-        label: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_login_label'),
-        help: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_login_help'),
-    });
-
-    settings.registerSetting({
-        setting: 'peopleinside-powcaptcha.enabled_signup',
-        type: 'bool',
-        label: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_signup_label'),
-        help: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_signup_help'),
-    });
-
-    settings.registerSetting({
-        setting: 'peopleinside-powcaptcha.enabled_forgot',
-        type: 'bool',
-        label: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_forgot_label'),
-        help: app.translator.trans('peopleinside-powcaptcha.admin.settings.enabled_forgot_help'),
-    });
-
-    settings.registerSetting({
-        setting: 'peopleinside-powcaptcha.difficulty',
+        setting: P + 'level',
         type: 'select',
         options: {
-            '3': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_3') as string,
-            '4': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_4') as string,
-            '5': app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_5') as string,
+            '1': tr('level_1') as string,
+            '2': tr('level_2') as string,
+            '3': tr('level_3') as string,
         },
-        label: app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_label'),
-        help: app.translator.trans('peopleinside-powcaptcha.admin.settings.difficulty_help'),
+        default: '2',
+        label: tr('level_label'),
+        help: tr('level_help'),
     });
+
+    for (const key of ['adaptive', 'protect_token_endpoint', 'log_enabled']) {
+        settings.registerSetting({ setting: P + key, type: 'bool', label: tr(key + '_label'), help: tr(key + '_help') });
+    }
+
+    settings.registerSetting(() => <LogsPanel />);
 }

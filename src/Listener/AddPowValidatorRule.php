@@ -6,70 +6,56 @@ use Flarum\Api\ForgotPasswordValidator;
 use Flarum\Foundation\AbstractValidator;
 use Flarum\Forum\LogInValidator;
 use Flarum\Locale\Translator;
-use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Validation\Validator;
+use PeopleInside\PowCaptcha\Service\PowSettings;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
+use PeopleInside\PowCaptcha\Support\CaptchaTokenExtractor;
 
 /**
- * Invokable class used by `Extend\Validator::configure()`.
- *
- * It is called by Flarum with two arguments:
- *   $flarumValidator  – the Flarum AbstractValidator being configured
- *   $laravelValidator – the underlying Illuminate Validator instance
+ * Invokable class used by `Extend\Validator::configure()` for the login and the
+ * forgot-password forms. Flarum calls it with the Flarum validator being configured
+ * and the underlying Illuminate validator instance.
  */
 class AddPowValidatorRule
 {
     public function __construct(
-        private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly PowSettings $settings,
+        private readonly PowTokenVerifier $verifier,
         private readonly Translator $translator
     ) {
     }
 
     public function __invoke(AbstractValidator $flarumValidator, Validator $laravelValidator): void
     {
-        $difficultySetting = $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
-        $rawDifficulty = is_numeric($difficultySetting) ? (int) $difficultySetting : 4;
+        $action = match (true) {
+            $flarumValidator instanceof LogInValidator => 'login',
+            $flarumValidator instanceof ForgotPasswordValidator => 'forgot',
+            default => null,
+        };
 
-        // normalizeDifficulty handles legacy values (1→3, 2→4) and clamps to [3, MAX].
-        $difficulty = PowTokenVerifier::normalizeDifficulty($rawDifficulty);
+        if ($action === null || ! $this->settings->enabledFor($action)) {
+            return;
+        }
 
-        // Register the custom "pow_captcha" rule with the Illuminate validator.
-        $laravelValidator->addExtension(
+        // Implicit rule: it also runs when the token is missing or empty, so those
+        // attempts are counted and logged instead of being skipped by "required".
+        $laravelValidator->addImplicitExtension(
             'pow_captcha',
-            function (string $attribute, mixed $value) use ($difficulty, $laravelValidator): bool {
-                $data = $laravelValidator->getData();
-                $honeypot = $data['email_confirmation'] ?? '';
-                if ($honeypot !== '') {
-                    return false;
+            function (string $attribute, mixed $value) use ($action, $laravelValidator): bool {
+                if (CaptchaTokenExtractor::honeypotValue($laravelValidator->getData()) !== '') {
+                    return $this->verifier->rejectHoneypot($action)->ok;
                 }
-                return is_string($value) && $this->tokenVerifier->verifyToken($value, $difficulty);
+
+                return $this->verifier->verify(is_string($value) ? $value : '', $action)->ok;
             }
         );
 
-        // Replace the default "{attribute} pow_captcha" message when supported.
+        $laravelValidator->addRules(['captchaToken' => ['pow_captcha']]);
+
         if (method_exists($laravelValidator, 'setCustomMessages')) {
             $laravelValidator->setCustomMessages([
-                'captchaToken.pow_captcha' => $this->resolveValidationMessage(),
+                'captchaToken.pow_captcha' => $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'),
             ]);
         }
-
-        // Only add the rule when the corresponding setting is enabled.
-        if ($flarumValidator instanceof LogInValidator
-            && $this->settings->get('peopleinside-powcaptcha.enabled_login', true)
-        ) {
-            $laravelValidator->addRules(['captchaToken' => ['required', 'pow_captcha']]);
-        }
-
-        if ($flarumValidator instanceof ForgotPasswordValidator
-            && $this->settings->get('peopleinside-powcaptcha.enabled_forgot', true)
-        ) {
-            $laravelValidator->addRules(['captchaToken' => ['required', 'pow_captcha']]);
-        }
-    }
-
-    private function resolveValidationMessage(): string
-    {
-        return $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha');
     }
 }

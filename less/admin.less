@@ -1,2 +1,65 @@
-// Admin panel styles – nothing extra needed; Flarum's admin UI handles the
-// settings page layout automatically via the Extend.Admin() extender.
+// ── Anonymous event log panel ─────────────────────────────────────────────────
+.PowLogs {
+    &-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        margin: 10px 0;
+    }
+
+    &-spacer {
+        flex: 1;
+    }
+
+    &-tableWrap {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+
+    &-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+
+        th,
+        td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--control-bg, rgba(127, 127, 127, 0.25));
+            white-space: nowrap;
+        }
+
+        th {
+            color: var(--muted-color);
+            font-weight: 600;
+        }
+    }
+
+    &-badge {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+
+        &--ok {
+            background: rgba(34, 160, 80, 0.18);
+            color: #1f9d55;
+        }
+
+        &--fail {
+            background: rgba(220, 60, 60, 0.18);
+            color: #d64545;
+        }
+    }
+
+    &-empty,
+    &-error {
+        color: var(--muted-color);
+    }
+
+    &-error {
+        color: var(--error-color, #d64545);
+    }
+}

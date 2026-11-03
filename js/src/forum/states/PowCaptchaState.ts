@@ -1,213 +1,172 @@
 import app from 'flarum/forum/app';
-import { sha256 } from 'js-sha256';
+import { PowSolveError, solvePow } from '../solver';
 
 declare const m: any;
 
 export type PowStatus = 'idle' | 'loading' | 'solving' | 'solved' | 'error';
+export type PowAction = 'login' | 'signup' | 'forgot';
 
-/**
- * Manages the lifecycle of a single Proof-of-Work challenge.
- *
- * Flow:
- *   idle  ──► loading  ──► solving  ──► solved
- *   idle  ──► loading  ──► error
- *   solved/error ──► idle  (after reset())
- */
+/** The server accepts a challenge for 300 s after issuing it; refresh a bit earlier. */
+const MAX_AGE_MS = 270_000;
+
+class ChallengeError extends Error {
+    constructor(public readonly kind: 'rate_limited' | 'unavailable', public readonly retryAfter = 0) {
+        super(kind);
+    }
+}
+
 export default class PowCaptchaState {
-    public id: string = Math.random().toString(36).slice(2, 9);
-    public status: PowStatus = 'idle';
-    public errorMessage: string | null = null;
-    public honeypotValue = '';
-    public solvedAt: number | null = null;
+    readonly id = 'pow-' + Math.random().toString(36).slice(2, 10);
 
+    private status: PowStatus = 'idle';
     private token: string | null = null;
-    private aborted = false;
-    private currentRunId = 0;
-    private settledListeners: Array<(status: PowStatus) => void> = [];
+    private issuedAt = 0;
+    private runId = 0;
+    private errorKey = 'error';
+    private errorParams: Record<string, unknown> = {};
+    private honeypot = '';
+    private waiters: Array<(status: PowStatus) => void> = [];
 
-    // ─── Public API ───────────────────────────────────────────────────
-
-    public getHoneypotValue(): string {
-        return this.honeypotValue;
-    }
-
-    /** Start fetching a challenge and solving it. Safe to call multiple times. */
-    async start(): Promise<void> {
-        if (this.status !== 'idle') return;
-
-        this.aborted = false;
-        const runId = ++this.currentRunId;
-        this.status = 'loading';
-        m.redraw();
-
-        try {
-            const { challenge, difficulty } = await this.fetchChallenge();
-
-            if (this.aborted || runId !== this.currentRunId) return;
-
-            this.status = 'solving';
-            m.redraw();
-
-            const solution = await this.solve(challenge, difficulty, runId);
-
-            if (this.aborted || runId !== this.currentRunId) return;
-
-            this.token = solution;
-            this.solvedAt = Date.now();
-            this.status = 'solved';
-            m.redraw();
-            this.notifySettled();
-        } catch (err: any) {
-            if (this.aborted || runId !== this.currentRunId) return;
-            this.status = 'error';
-            this.errorMessage = err?.message ?? String(err);
-            m.redraw();
-            this.notifySettled();
-        }
-    }
-
-    /** Return the solved token, or null if not yet solved or stale. */
-    getResponse(): string | null {
-        if (this.status !== 'solved' || !this.token) {
-            return null;
-        }
-
-        // Auto-renew tokens older than 240 seconds (backend TTL is 300s)
-        if (this.solvedAt && Date.now() - this.solvedAt > 240_000) {
-            this.retry();
-            return null;
-        }
-
-        return this.token;
-    }
+    constructor(public readonly action: PowAction) {}
 
     getStatus(): PowStatus {
         return this.status;
     }
 
-    /**
-     * Promise that resolves when the state is no longer 'loading' or 'solving',
-     * or when timeoutMs elapses.
-     */
-    public async waitUntilSettled(timeoutMs = 4000): Promise<PowStatus> {
+    /** Translated message for the error state. */
+    getErrorMessage(): string {
+        return app.translator.trans('peopleinside-powcaptcha.forum.' + this.errorKey, this.errorParams) as string;
+    }
+
+    getHoneypotValue(): string {
+        return this.honeypot;
+    }
+
+    setHoneypotValue(value: string): void {
+        this.honeypot = value;
+    }
+
+    /** True when a solved token is about to expire on the server. */
+    isStale(): boolean {
+        return this.status === 'solved' && Date.now() - this.issuedAt > MAX_AGE_MS;
+    }
+
+    /** The solved, still valid token (`challenge:nonce`), or null. */
+    getResponse(): string | null {
+        return this.status === 'solved' && !this.isStale() ? this.token : null;
+    }
+
+    reset(): void {
+        this.runId++;
+        this.token = null;
+        this.setStatus('idle');
+    }
+
+    retry(): void {
+        this.reset();
+        void this.start();
+    }
+
+    waitUntilSettled(timeoutMs: number): Promise<PowStatus> {
         if (this.status !== 'loading' && this.status !== 'solving') {
-            return this.status;
+            return Promise.resolve(this.status);
         }
 
-        return new Promise<PowStatus>((resolve) => {
-            let timer: any = null;
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                this.waiters = this.waiters.filter((w) => w !== done);
+                resolve(this.status);
+            }, timeoutMs);
 
-            const onSettled = (status: PowStatus) => {
-                if (timer) clearTimeout(timer);
+            const done = (status: PowStatus) => {
+                clearTimeout(timer);
                 resolve(status);
             };
 
-            if (timeoutMs > 0) {
-                timer = setTimeout(() => {
-                    const idx = this.settledListeners.indexOf(onSettled);
-                    if (idx !== -1) {
-                        this.settledListeners.splice(idx, 1);
-                    }
-                    resolve(this.status);
-                }, timeoutMs);
-            }
-
-            this.settledListeners.push(onSettled);
+            this.waiters.push(done);
         });
     }
 
-    private notifySettled(): void {
-        if (this.status !== 'loading' && this.status !== 'solving') {
-            const listeners = [...this.settledListeners];
-            this.settledListeners = [];
-            listeners.forEach((resolve) => resolve(this.status));
+    async start(): Promise<void> {
+        if (this.status === 'loading' || this.status === 'solving') return;
+
+        const run = ++this.runId;
+        const cancelled = () => run !== this.runId;
+
+        this.token = null;
+        this.setStatus('loading');
+
+        try {
+            const { challenge, difficulty } = await this.fetchChallenge();
+            if (cancelled()) return;
+
+            this.issuedAt = Date.now();
+            this.setStatus('solving');
+
+            const token = await solvePow(challenge, difficulty, cancelled);
+            if (cancelled()) return;
+
+            this.token = token;
+            this.setStatus('solved');
+        } catch (e) {
+            if (cancelled() || (e instanceof PowSolveError && e.kind === 'aborted')) return;
+
+            if (e instanceof ChallengeError && e.kind === 'rate_limited') {
+                this.errorKey = 'rate_limited';
+                this.errorParams = { seconds: e.retryAfter || 30 };
+            } else {
+                this.errorKey = 'error';
+                this.errorParams = {};
+            }
+
+            this.token = null;
+            this.setStatus('error');
         }
     }
 
-    /** Reset to idle so start() can be called again. */
-    reset(): void {
-        this.aborted = true;
-        this.currentRunId++;
-        this.status = 'idle';
-        this.token = null;
-        this.errorMessage = null;
-        this.honeypotValue = '';
+    private setStatus(status: PowStatus): void {
+        this.status = status;
+
+        if (status !== 'loading' && status !== 'solving') {
+            const waiters = this.waiters;
+            this.waiters = [];
+            waiters.forEach((resolve) => resolve(status));
+        }
+
         m.redraw();
-        this.notifySettled();
     }
-
-    /** Convenience: reset then start a new challenge. */
-    async retry(): Promise<void> {
-        this.reset();
-        await this.start();
-    }
-
-    // ─── Internal helpers ─────────────────────────────────────────────
 
     private async fetchChallenge(): Promise<{ challenge: string; difficulty: number }> {
-        const apiUrl = (app.forum.attribute<string>('apiUrl') as string) || '/api';
-        const url = apiUrl.replace(/\/$/, '') + '/powcaptcha/challenge';
+        const base = app.forum.attribute<string>('apiUrl').replace(/\/$/, '');
+        let response: Response;
 
-        return app.request<{ challenge: string; difficulty: number }>({
-            method: 'GET',
-            url: url,
-        });
-    }
-
-    private getSolveLimits(difficulty: number): { maxAttempts: number; maxDuration: number } {
-        if (difficulty <= 2) {
-            return { maxAttempts: 500_000, maxDuration: 15_000 };
-        }
-        if (difficulty === 3) {
-            return { maxAttempts: 3_000_000, maxDuration: 45_000 };
-        }
-        if (difficulty === 4) {
-            return { maxAttempts: 15_000_000, maxDuration: 120_000 };
-        }
-        if (difficulty === 5) {
-            return { maxAttempts: 45_000_000, maxDuration: 300_000 };
-        }
-        return { maxAttempts: 100_000_000, maxDuration: 600_000 };
-    }
-
-    /**
-     * Brute-force a nonce N such that SHA-256(`${challenge}:${N}`) starts with
-     * `difficulty` hex zeros.
-     *
-     * We use a synchronous pure-JS sha256 library to maximize performance
-     * and avoid excessive asynchronous microtask overhead in the loop,
-     * while yielding occasionally to keep the browser UI responsive.
-     */
-    private async solve(challenge: string, difficulty: number, runId: number): Promise<string> {
-        const prefix = `${challenge}:`;
-        const startedAt = Date.now();
-        const normalizedDiff = Math.max(1, Math.min(8, difficulty));
-        const { maxAttempts, maxDuration } = this.getSolveLimits(normalizedDiff);
-        const requiredPrefix = '0'.repeat(normalizedDiff);
-
-        let lastYieldAt = Date.now();
-
-        for (let nonce = 0; nonce < maxAttempts; nonce++) {
-            if (this.aborted || runId !== this.currentRunId) throw new Error('aborted');
-
-            // Yield periodically to prevent blocking the UI
-            if (nonce % 2048 === 0) {
-                const now = Date.now();
-                if (now - startedAt > maxDuration) {
-                    throw new Error('challenge solve timeout');
-                }
-                if (now - lastYieldAt > 16) {
-                    await new Promise<void>((r) => setTimeout(r, 0));
-                    lastYieldAt = Date.now();
-                }
-            }
-
-            const hashHex = sha256(prefix + nonce);
-            if (hashHex.startsWith(requiredPrefix)) {
-                return `${challenge}:${nonce}`;
-            }
+        try {
+            response = await fetch(`${base}/powcaptcha/challenge?action=${encodeURIComponent(this.action)}`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store',
+            });
+        } catch (e) {
+            throw new ChallengeError('unavailable');
         }
 
-        throw new Error('challenge solve iteration limit reached');
+        if (response.status === 429) {
+            const retry = parseInt(response.headers.get('Retry-After') ?? '30', 10);
+            throw new ChallengeError('rate_limited', Number.isFinite(retry) ? retry : 30);
+        }
+
+        if (!response.ok) throw new ChallengeError('unavailable');
+
+        const data = await response.json().catch(() => null);
+
+        if (!data || typeof data.challenge !== 'string') throw new ChallengeError('unavailable');
+
+        // The difficulty inside the signed challenge is authoritative.
+        const embedded = parseInt(data.challenge.split('.')[3] ?? '', 10);
+        const difficulty = Number.isFinite(embedded) ? embedded : Number(data.difficulty);
+
+        if (!Number.isFinite(difficulty) || difficulty < 1 || difficulty > 8) throw new ChallengeError('unavailable');
+
+        return { challenge: data.challenge, difficulty };
     }
 }

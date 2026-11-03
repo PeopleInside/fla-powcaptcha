@@ -1,82 +1,72 @@
-import app from 'flarum/forum/app';
-import Component, { ComponentAttrs } from 'flarum/common/Component';
-import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
+import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import app from 'flarum/forum/app';
 import type PowCaptchaState from '../states/PowCaptchaState';
 
-interface PowCaptchaWidgetAttrs extends ComponentAttrs {
+declare const m: any;
+
+interface Attrs {
     state: PowCaptchaState;
 }
 
 /**
- * Inline widget shown inside the login / sign-up / forgot-password modals.
+ * Accessible PoW status line.
  *
- * Visual states
- * ─────────────
- *  solving  → spinner + "Verifying security…"
- *  solved   → ✓ checkmark + "Security check passed"
- *  error    → ✗ icon + error message + Retry button
+ *  - One polite live region announces progress and result to screen readers; the
+ *    state labels are real text, not colour or icon only.
+ *  - The honeypot lives in a wrapper that is hidden from assistive technology
+ *    (aria-hidden + inert), not focusable and told to password managers to ignore.
+ *  - Fixed height, so the modal never jumps between states.
  */
-export default class PowCaptchaWidget extends Component<PowCaptchaWidgetAttrs> {
-    oncreate(vnode: any) {
+export default class PowCaptchaWidget extends Component<Attrs> {
+    oncreate(vnode: any): void {
         super.oncreate(vnode);
-        // Start solving immediately as soon as the modal widget is mounted
         this.attrs.state.start();
     }
 
-    onremove(vnode: any) {
+    onremove(vnode: any): void {
+        super.onremove(vnode);
         this.attrs.state.reset();
     }
 
     view() {
         const { state } = this.attrs;
         const status = state.getStatus();
-        const isSolving = status === 'loading' || status === 'solving';
+        const busy = status === 'loading' || status === 'solving';
 
-        // All three inner panels are always rendered so the container keeps a
-        // fixed height throughout every state transition.  The active panel is
-        // revealed with CSS opacity (see forum.less), which produces a smooth
-        // cross-fade without any layout jump in the modal.
+        let label = '';
+        if (busy) label = app.translator.trans('peopleinside-powcaptcha.forum.solving') as string;
+        else if (status === 'solved') label = app.translator.trans('peopleinside-powcaptcha.forum.verified') as string;
+        else if (status === 'error') label = state.getErrorMessage();
+
         return (
             <div className={`PowCaptchaWidget PowCaptchaWidget--${status}`}>
-                {/* Honeypot field - visually and physically hidden to humans, but alluring to bot autofills and custom scripts */}
-                <input
-                    className="pow-confirm-field"
-                    type="text"
-                    name="email_confirmation"
-                    tabindex="-1"
-                    autocomplete="off"
-                    value={state.honeypotValue}
-                    oninput={(e: any) => {
-                        state.honeypotValue = e.target.value;
-                    }}
-                />
-
-                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solving${isSolving ? ' is-visible' : ''}`}>
-                    <LoadingIndicator size="small" />
-                    <span className="PowCaptchaWidget-label">
-                        {app.translator.trans('peopleinside-powcaptcha.forum.solving')}
-                    </span>
+                <div className="PowCaptchaWidget-hp" aria-hidden="true">
+                    <input
+                        type="text"
+                        name="pow_website"
+                        tabindex="-1"
+                        autocomplete="off"
+                        inert={true}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        data-form-type="other"
+                        value={state.getHoneypotValue()}
+                        oninput={(e: Event) => state.setHoneypotValue((e.target as HTMLInputElement).value)}
+                    />
                 </div>
 
-                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-solved${status === 'solved' ? ' is-visible' : ''}`}>
-                    <span className="icon fas fa-check-circle" aria-hidden="true" />
-                    <span className="PowCaptchaWidget-label">
-                        {app.translator.trans('peopleinside-powcaptcha.forum.verified')}
-                    </span>
-                </div>
-
-                <div className={`PowCaptchaWidget-inner PowCaptchaWidget-error${status === 'error' ? ' is-visible' : ''}`}>
-                    <span className="icon fas fa-times-circle" aria-hidden="true" />
-                    <span className="PowCaptchaWidget-label">
-                        {app.translator.trans('peopleinside-powcaptcha.forum.error')}
-                    </span>
-                    <Button
-                        className="Button Button--text"
-                        onclick={() => state.retry()}
-                    >
-                        {app.translator.trans('peopleinside-powcaptcha.forum.retry')}
-                    </Button>
+                <div className="PowCaptchaWidget-status" role="status" aria-live="polite" aria-atomic="true">
+                    {busy ? <LoadingIndicator size="small" display="inline" /> : null}
+                    {status === 'solved' ? <i className="icon fas fa-check-circle" aria-hidden="true" /> : null}
+                    {status === 'error' ? <i className="icon fas fa-exclamation-circle" aria-hidden="true" /> : null}
+                    <span className="PowCaptchaWidget-label">{label}</span>
+                    {status === 'error' ? (
+                        <Button className="Button Button--link" onclick={() => state.retry()}>
+                            {app.translator.trans('peopleinside-powcaptcha.forum.retry')}
+                        </Button>
+                    ) : null}
                 </div>
             </div>
         );

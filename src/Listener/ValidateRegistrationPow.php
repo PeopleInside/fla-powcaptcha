@@ -2,39 +2,30 @@
 
 namespace PeopleInside\PowCaptcha\Listener;
 
+use Flarum\Foundation\ValidationException;
 use Flarum\Locale\Translator;
-use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\Event\Saving;
+use PeopleInside\PowCaptcha\Service\PowSettings;
 use PeopleInside\PowCaptcha\Service\PowTokenVerifier;
 use PeopleInside\PowCaptcha\Support\CaptchaTokenExtractor;
 
 /**
- * Validates the PoW token during user registration (User\Event\Saving).
- *
- * Registration is NOT covered by the Extend\Validator extender because it
- * fires a domain event instead of calling a dedicated validator directly.
+ * Flarum 1.x only: validates the PoW token while a new user is being saved.
+ * (On Flarum 2.x the same check is done by Api\RegisterUserCaptchaFields.)
  */
 class ValidateRegistrationPow
 {
     public function __construct(
-        private readonly SettingsRepositoryInterface $settings,
-        private readonly PowTokenVerifier $tokenVerifier,
+        private readonly PowSettings $settings,
+        private readonly PowTokenVerifier $verifier,
         private readonly Translator $translator
     ) {
     }
 
     public function handle(Saving $event): void
     {
-        // Only apply to brand-new users, skip admin-created accounts.
-        if ($event->user->exists) {
-            return;
-        }
-
-        if (!$this->settings->get('peopleinside-powcaptcha.enabled_signup', true)) {
-            return;
-        }
-
-        if ($event->actor->isAdmin()) {
+        // Only brand-new users; skip admin-created accounts.
+        if ($event->user->exists || ! $this->settings->enabledFor('signup') || $event->actor->isAdmin()) {
             return;
         }
 
@@ -42,20 +33,14 @@ class ValidateRegistrationPow
             return;
         }
 
-        $token = CaptchaTokenExtractor::fromRegistrationData($event->data);
-        $honeypot = CaptchaTokenExtractor::fromHoneypotData($event->data);
-        $difficulty = (int) $this->settings->get('peopleinside-powcaptcha.difficulty', 4);
+        $result = CaptchaTokenExtractor::honeypotValue($event->data) !== ''
+            ? $this->verifier->rejectHoneypot('signup')
+            : $this->verifier->verify(CaptchaTokenExtractor::fromRegistrationData($event->data), 'signup');
 
-        if ($honeypot !== '') {
-            throw new \Flarum\Foundation\ValidationException(
-                ['captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')]]
-            );
-        }
-
-        if (!is_string($token) || !$this->tokenVerifier->verifyToken($token, $difficulty)) {
-            throw new \Flarum\Foundation\ValidationException(
-                ['captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')]]
-            );
+        if (! $result->ok) {
+            throw new ValidationException([
+                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')],
+            ]);
         }
     }
 }
