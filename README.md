@@ -137,6 +137,19 @@ If you use a reverse proxy or a CDN, configure the **web server** so `REMOTE_ADD
 
 If `REMOTE_ADDR` is a private or reserved address (typical when that is not configured), the per-IP features — rate limit, adaptive difficulty and network binding — are **switched off automatically** instead of treating all visitors as one; the CAPTCHA itself keeps working.
 
+## Troubleshooting
+
+**The forum still seems to run old code after an update** (typical when the version number stays the same, because Composer may serve its cached copy):
+
+1. Replace the extension folder **completely** (delete it, then copy the whole content of the release); do not overlay files onto the old ones.
+2. Run `composer clear-cache`, then `composer dump-autoload` and `php flarum cache:clear` from the Flarum root.
+3. Check the server side: `ls vendor/peopleinside/fla-powcaptcha/src` must list `Provider`, `Middleware`, `Service`, `Controller`…, and `extend.php` must contain `autoload.php` (`grep -c autoload.php vendor/peopleinside/fla-powcaptcha/extend.php` → `1`).
+4. Check the browser side: open the forum in a private window, press F12 and type `flarum.extensions['peopleinside-fla-powcaptcha']`. It must answer `{build: "3.8.0+…"}`; if it does not, the old JavaScript is still being served.
+
+**`Class "PeopleInside\PowCaptcha\…" not found`** in `storage/logs`: the files are incomplete or Composer's classmap is stale. Follow the steps above.
+
+**A form is broken or empty**: in *Admin → Extensions → PoW CAPTCHA* switch off the CAPTCHA for that form. If the problem remains, it is not caused by this extension.
+
 ## License
 
 [Apache-2.0](LICENSE)

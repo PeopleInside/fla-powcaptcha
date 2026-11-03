@@ -1,27 +1,5 @@
 # Changelog
 
-## 3.8.4
-
-- **Fixed: login, sign-up and password-reset modals rendered empty.** The CAPTCHA widget was added to the form fields with a `key`, while the other fields have none, and Mithril rejects such mixed lists (`In fragments, vnodes must either all have keys or none have keys`), so the whole modal body failed to render. The widget is now added without a key, exactly like the previous stable release.
-- `tests/js` now uses the real Mithril (pinned to 2.2.8, as in Flarum core) and checks that the modal body renders with the widget among unkeyed fields, and that the widget itself renders in all five states. It reproduces the crash on the 3.8.3 bundle and passes on this release. Run `npm ci` in `js/` once, then `bash tests/js/run.sh`.
-
-## 3.8.3
-
-- **Fixed the real cause of the boot crash** (`Uncaught TypeError: Cannot read properties of undefined (reading 'extend')` in `Application.bootExtensions`). Flarum wraps each extension bundle as `var module={}; <bundle> flarum.extensions['…']=module.exports;`, but the rebuilt bundles never assigned `module.exports`, so the extension was registered as `undefined`. Both `forum.js` and `admin.js` now end by setting `module.exports` (webpack footer in `js/webpack.config.js`), like the previous stable release did. 3.8.2 fixed two real but secondary problems only (lazy-loaded modals, unavailable `icon` helper).
-- Added `tests/js/run.sh`: loads the shipped bundles exactly like Flarum does (PHP wrapper + core `bootExtensions`) and runs a functional smoke test with lazy modals. It reproduces the crash on the 3.8.2 bundles and passes on the stable 3.7.0 and on this release. Run it before every release.
-
-## 3.8.2
-
-- **Fixed: the forum JavaScript crashed at boot on Flarum 2.x** ("Something went wrong while trying to load the full version of this site"), caused by two mistakes in 3.8.0/3.8.1:
-  - the auth modals (`LogInModal`, `SignUpModal`, `ForgotPasswordModal`) are lazy-loaded in Flarum 2.x and were imported as classes; they are now extended **by module path**, which Flarum applies when the modal is actually loaded;
-  - the widget imported `flarum/common/helpers/icon`, which the 2.0.x module registry does not export (`No module found for core:common/helpers/icon`); plain markup is used instead.
-- The shipped bundle now requests exactly the same five core modules as the previous stable release.
-- Only the `onsubmit` entry point is wrapped unconditionally; `onSubmit` / `submit` are wrapped only if the modal really has them.
-
-## 3.8.1
-
-- Added a safety-net autoloader (`autoload.php`): if the extension files are replaced by hand or Composer's optimized classmap is stale, the forum no longer fails to boot with `Class "…\PowServiceProvider" not found`. After a manual update you should still run `composer dump-autoload`.
-
 ## 3.8.0
 
 ### Security
@@ -36,11 +14,13 @@
 - Missing / empty tokens on login and password reset are now counted and logged (implicit validation rule).
 
 ### Added
+- Safety-net autoloader (`autoload.php`): a stale Composer classmap can no longer take the forum down with `Class "…\PowServiceProvider" not found`.
 - Anonymous event log in the admin panel (last 30 passed + 30 failed, no IP / UA / personal data, automatic pruning, write cap during floods, *Clear log* button).
 - Admin settings: difficulty level, adaptive difficulty, `/api/token` protection, event log.
-- PHP test suite (`php tests/run.php`).
+- PHP test suite (`php tests/run.php`) and a JavaScript suite (`bash tests/js/run.sh`, Node only) that loads the shipped bundles the way Flarum does (PHP wrapper, `bootExtensions`, lazy modals, real Mithril and a core-faithful ItemList).
 
 ### Changed
+- The frontend now extends the auth modals **by module path** (they are lazy-loaded in Flarum 2.x), always leaves `module.exports` set (Flarum registers the extension from it), and adds the widget to the form with the same keyed/unkeyed style as the other fields (Mithril rejects mixed lists). A build id is exposed in the browser console as `flarum.extensions['peopleinside-fla-powcaptcha'].build`.
 - Difficulty is now a **level 1–3** stored in `peopleinside-powcaptcha.level`. A migration converts the old `difficulty` (3/4/5) keeping the same real work; the old value is kept for downgrades. Labels now show measured times instead of the previous inaccurate estimates.
 - Frontend rebuilt from source: the shipped `js/dist/forum.js` previously did **not** match `js/src` (it used `crypto.subtle` with a 2M-attempt / 15 s cap, which made the highest level fail for ~15 % of visitors). Dynamic attempt/time limits, MessageChannel yielding (works in background tabs), transparent renewal of stale tokens, and waiting for the solve on submit.
 - Accessibility: `role="status"` / `aria-live` announcements, only the current state is rendered, honeypot hidden from assistive tech, reduced-motion support.

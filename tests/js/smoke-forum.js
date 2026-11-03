@@ -47,8 +47,15 @@ let step = '';
     console.log(`1) bundle caricato e initializer eseguiti senza errori. Aggancio per percorso in attesa dei modali lazy: ${pending.length} hook`);
     console.log('   moduli core non trovati:', log.filter((l) => l.startsWith('WARN')).length ? log.filter((l) => l.startsWith('WARN')) : 'nessuno');
 
+    // Faithful copy of Flarum core's ItemList behaviour (objects are returned through a Proxy exposing itemName).
+class ItemList { constructor() { this.items = {}; }
+  add(k, c, p = 0) { this.items[k] = { content: c, priority: p, itemName: k }; return this; }
+  toArray() { return Object.values(this.items).map((i) => ({ ...i, content: i.content && typeof i.content === 'object'
+      ? new Proxy(i.content, { get(t, pr, r) { return pr === 'itemName' ? i.itemName : Reflect.get(t, pr, r); } }) : i.content }))
+    .sort((a, b) => b.priority - a.priority).map((i) => i.content); } }
+
     // Simulate the lazy chunks loading afterwards (as Flarum does when the user opens a modal)
-    const make = (methods, dataMethod) => { const C = class { constructor() { this.attrs = {}; this.loading = false; } oninit() {} fields() { const list = [m('div', {}, 'identification'), m('div', {}, 'password')]; return { add(k, v, p) { this.k = k; this.v = v; this.p = p; list.push(v); }, toArray() { return list; } }; } onsubmit() { this.submitted = true; this.sent = this[dataMethod](); } };
+    const make = (methods, dataMethod) => { const C = class { constructor() { this.attrs = {}; this.loading = false; } oninit() {} fields() { const keyed = this.constructor.keyedSiblings; const f = (n) => (keyed ? m('div', { key: n }, n) : m('div', {}, n)); return new ItemList().add('identification', f('identification'), 30).add('password', f('password'), 20).add('submit', f('submit'), -10); } onsubmit() { this.submitted = true; this.sent = this[dataMethod](); } };
       C.prototype[dataMethod] = function () { return {}; }; methods.forEach((x) => (C.prototype[x] = function () {})); return C; };
     const Login = make(['onerror'], 'loginParams'), SignUp = make([], 'submitData'), Forgot = make(['onerror'], 'requestParams');
     const byId = { 'forum/components/LogInModal': Login, 'forum/components/SignUpModal': SignUp, 'forum/components/ForgotPasswordModal': Forgot };
@@ -58,9 +65,14 @@ let step = '';
     step = 'apertura modale login'; const inst = new Login(); inst.oninit();
     console.log('3) oninit -> stato captcha creato:', !!inst.powCaptchaState, '| azione:', inst.powCaptchaState.action);
     const items = inst.fields();
-    console.log('4) fields -> widget aggiunto:', items.k, '(priorita', items.p + ')');
+    console.log('4) fields -> widget aggiunto:', !!items.items['pow-captcha'], '(priorita', items.items['pow-captcha'].priority + ')');
     step = 'rendering del corpo del modale (come Modal.body)'; m('div', {}, items.toArray());
-    console.log('4b) corpo del modale costruito con Mithril vero (campi non indicizzati + widget): OK');
+    console.log('4b) corpo del modale con ItemList del core + Mithril vero, campi NON indicizzati (come il core): OK');
+    Login.keyedSiblings = true; const kInst = new Login(); kInst.oninit(); const kItems = kInst.fields(); m('div', {}, kItems.toArray());
+    console.log('4b2) stesso controllo con campi vicini INDICIZZATI (altra estensione): il widget si adegua, nessun errore: OK');
+    Login.keyedSiblings = false;
+    let sanity = false; try { m('div', {}, [m('div', {}, 'a'), m('div', { key: 'k' }, 'b')]); } catch (e) { sanity = /all have keys or none/.test(e.message); }
+    console.log('4b3) controllo di sanita: Mithril rifiuta davvero liste miste (il test sa rilevare il bug):', sanity ? 'OK' : 'NO!'); if (!sanity) throw new Error('il test non rileva il bug');
 
     step = 'rendering del widget nei 5 stati'; const Widget = added['forum/components/PowCaptchaWidget'], State = added['forum/states/PowCaptchaState'];
     const st = new State('login'); const w = new Widget(); w.attrs = { state: st };
