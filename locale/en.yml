@@ -29,8 +29,6 @@ peopleinside-powcaptcha:
       cleared: CAPTCHA log cleared.
       load_error: Could not load the log.
       empty: No events recorded yet.
-      ip_status_active: IP addresses visible
-      ip_status_disabled: IP logging disabled (GDPR)
       ip_banner_disabled: "IP addresses are not recorded or displayed (disabled by default for GDPR compliance). To record and show IP addresses, enable the 'Record and display IP addresses in CAPTCHA logs' option in the settings above."
       filter_all: All
       filter_ok: Passed

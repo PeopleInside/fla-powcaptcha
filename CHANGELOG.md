@@ -3,12 +3,10 @@
 ## 3.8.1
 
 ### Added
-- **Automated GitHub Actions release packaging**: releases automatically compile production JavaScript bundles and attach a versioned ZIP archive (`fla-powcaptcha-<version>.zip`) to each GitHub release.
-- **Optional IP address logging in CAPTCHA event logs**:
-  - Added `ip` column to the `powcaptcha_logs` table via database migration.
-  - Added setting: *Record and display IP addresses in CAPTCHA logs* (`peopleinside-powcaptcha.log_ip`).
-  - **Disabled by default** to preserve privacy and ensure GDPR compliance, with explicit warnings regarding personal data implications.
-  - When enabled, records visitor IP addresses and displays them in the admin event log table. When disabled, IP addresses are neither stored nor shown.
+- **Optional IP address logging in the CAPTCHA event log** (passed and failed checks):
+  - New `ip` column on `powcaptcha_logs` (migration `2026_11_11_000000_add_ip_to_powcaptcha_logs_table`).
+  - New setting *Record and display IP addresses in CAPTCHA logs* (`peopleinside-powcaptcha.log_ip`).
+  - **Off by default** (IP addresses are personal data under GDPR). When off, no IP is stored and none is returned by the API; IPs recorded earlier stay hidden but remain in the table until the log is cleared or pruned.
 
 ## 3.8.0
 

@@ -2,7 +2,6 @@ import app from 'flarum/admin/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import Switch from 'flarum/common/components/Switch';
 
 declare const m: any;
 
@@ -22,9 +21,10 @@ const t = (key: string, params: Record<string, unknown> = {}) =>
     app.translator.trans('peopleinside-powcaptcha.admin.logs.' + key, params) as any;
 
 /**
- * Event log of the latest CAPTCHA outcomes. The server keeps the latest 30 events
- * per outcome and prunes the rest on its own; this panel can also clear it manually.
- * IP addresses are recorded and shown only if explicitly enabled via the switch.
+ * Log of the latest CAPTCHA outcomes. The server keeps the latest 30 events per outcome
+ * and prunes the rest on its own; this panel can also clear it manually. IP addresses are
+ * stored and returned by the server only when the "log_ip" setting is on (default: off),
+ * so this panel simply shows the column when the server says so.
  */
 export default class LogsPanel extends Component {
     private rows: LogRow[] | null = null;
@@ -32,19 +32,10 @@ export default class LogsPanel extends Component {
     private failed = false;
     private filter: Filter = 'all';
     private showIp = false;
-    private savingIpSetting = false;
 
     oninit(vnode: any): void {
         super.oninit(vnode);
         this.load();
-    }
-
-    private get isIpLoggingEnabled(): boolean {
-        const settingVal = (app.data?.settings as Record<string, unknown> | undefined)?.['peopleinside-powcaptcha.log_ip'];
-        if (settingVal !== undefined && settingVal !== null) {
-            return settingVal === '1' || settingVal === 'true' || settingVal === true;
-        }
-        return this.showIp;
     }
 
     private endpoint(): string {
@@ -66,33 +57,6 @@ export default class LogsPanel extends Component {
             })
             .then(() => {
                 this.loading = false;
-                m.redraw();
-            });
-    }
-
-    private toggleLogIp(val: boolean): void {
-        this.savingIpSetting = true;
-        this.showIp = val;
-        m.redraw();
-
-        app.request({
-            method: 'POST',
-            url: app.forum.attribute<string>('apiUrl').replace(/\/$/, '') + '/settings',
-            body: {
-                'peopleinside-powcaptcha.log_ip': val ? '1' : '0',
-            },
-        })
-            .then(() => {
-                if (app.data?.settings) {
-                    (app.data.settings as Record<string, unknown>)['peopleinside-powcaptcha.log_ip'] = val ? '1' : '0';
-                }
-                this.load();
-            })
-            .catch(() => {
-                app.alerts.show({ type: 'error' }, 'Could not save setting.');
-            })
-            .then(() => {
-                this.savingIpSetting = false;
                 m.redraw();
             });
     }
@@ -119,29 +83,12 @@ export default class LogsPanel extends Component {
 
     view() {
         const rows = (this.rows ?? []).filter((r) => this.filter === 'all' || r.result === this.filter);
-        const ipActive = this.showIp || this.isIpLoggingEnabled;
+        const ipActive = this.showIp;
 
         return (
             <div className="Form-group PowLogs">
                 <label>{t('title')}</label>
                 <div className="helpText">{t('help')}</div>
-
-                {/* INTERRUTTORE DIRETTO PER REGISTRARE E MOSTRARE GLI INDIRIZZI IP */}
-                <div
-                    className="PowLogs-ipSettingBox"
-                    style="margin: 14px 0 16px; padding: 14px 16px; background: rgba(127, 127, 127, 0.08); border-radius: 8px; border: 1px solid rgba(127, 127, 127, 0.2);"
-                >
-                    <Switch
-                        state={ipActive}
-                        loading={this.savingIpSetting}
-                        onchange={(val: boolean) => this.toggleLogIp(val)}
-                    >
-                        {app.translator.trans('peopleinside-powcaptcha.admin.settings.log_ip_label')}
-                    </Switch>
-                    <div className="helpText" style="margin-top: 6px; font-size: 12px; line-height: 1.5;">
-                        {app.translator.trans('peopleinside-powcaptcha.admin.settings.log_ip_help')}
-                    </div>
-                </div>
 
                 <div className="PowLogs-toolbar">
                     {(['all', 'ok', 'fail'] as Filter[]).map((f) => (
@@ -154,10 +101,6 @@ export default class LogsPanel extends Component {
                         </Button>
                     ))}
                     <span className="PowLogs-spacer" />
-                    <span className="helpText" style="margin:0 8px;font-size:12px;">
-                        <i className={ipActive ? "fas fa-eye text-success" : "fas fa-eye-slash text-muted"} style="margin-right:4px;"></i>
-                        {ipActive ? t('ip_status_active') : t('ip_status_disabled')}
-                    </span>
                     <Button className="Button" icon="fas fa-sync-alt" onclick={() => this.load()} disabled={this.loading}>
                         {t('refresh')}
                     </Button>
@@ -166,12 +109,7 @@ export default class LogsPanel extends Component {
                     </Button>
                 </div>
 
-                {!ipActive ? (
-                    <p className="helpText" style="margin:4px 0 12px;font-size:12px;opacity:0.85;">
-                        <i className="fas fa-info-circle" style="margin-right:4px;"></i>
-                        {t('ip_banner_disabled')}
-                    </p>
-                ) : null}
+                {this.rows && !ipActive ? <p className="helpText">{t('ip_banner_disabled')}</p> : null}
 
                 {this.loading && !this.rows ? <LoadingIndicator /> : null}
                 {this.failed ? <p className="PowLogs-error">{t('load_error')}</p> : null}
