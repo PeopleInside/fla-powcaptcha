@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.1
+
+### Added
+- **Optional IP address logging in the CAPTCHA event log** (passed and failed checks):
+  - New `ip` column on `powcaptcha_logs` (migration `2026_11_11_000000_add_ip_to_powcaptcha_logs_table`).
+  - New setting *Record and display IP addresses in CAPTCHA logs* (`peopleinside-powcaptcha.log_ip`).
+  - **Off by default** (IP addresses are personal data under GDPR). When off, no IP is stored and none is returned by the API; IPs recorded earlier stay hidden but remain in the table until the log is cleared or pruned.
+
 ## 3.8.0
 
 ### Security

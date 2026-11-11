@@ -38,7 +38,7 @@ export default function registerSettings(): void {
         help: tr('level_help'),
     });
 
-    for (const key of ['adaptive', 'protect_token_endpoint', 'log_enabled']) {
+    for (const key of ['adaptive', 'protect_token_endpoint', 'log_enabled', 'log_ip']) {
         settings.registerSetting({ setting: P + key, type: 'bool', label: tr(key + '_label'), help: tr(key + '_help') });
     }
 

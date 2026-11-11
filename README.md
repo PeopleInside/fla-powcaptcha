@@ -23,7 +23,7 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 🔁 **Atomic single use** – a token can be consumed only once, even with parallel requests (uses a cache lock when available)
 - 🪤 **Honeypot and time trap** – invisible traps for form-filling bots (sign-up must take at least 2 s)
 - 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
-- 📋 **Anonymous event log** in the admin panel – last 30 passed / 30 failed checks, **no IP address or personal data**, self-pruning, with a *Clear log* button
+- 📋 **Event log** in the admin panel – last 30 passed / 30 failed checks, self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
 - 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
 
@@ -91,7 +91,8 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Difficulty level | 2 – Balanced | Level 1 = 3 hex zeros (~4k hashes), level 2 = 4 (~65k), level 3 = 5 (~1M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s (phones are 3–6× slower) |
 | Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
-| Keep an anonymous event log | on | Last 30 passed + 30 failed checks, no personal data |
+| Keep an event log | on | Last 30 passed + 30 failed checks |
+| Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x
 
@@ -124,7 +125,7 @@ The PHP logic is covered by plain-PHP tests (no Flarum installation required): `
 
 ### Anonymous log and privacy
 
-The log stores only time, form, outcome, a technical reason and difficulty. It never stores IP addresses (not even truncated or hashed), user agents, usernames or e-mail addresses. Abuse counters used for rate limiting and adaptive difficulty live in the cache, are keyed by an HMAC of the network (never the raw IP) and expire within minutes. Even so, mention the CAPTCHA in your privacy policy; this is not legal advice.
+The log stores time, form, outcome, a technical reason and difficulty. By default it stores no IP address; only if an administrator enables *Record and display IP addresses in CAPTCHA logs* is the visitor IP (as seen in `REMOTE_ADDR`) added. It never stores user agents, usernames or e-mail addresses. Abuse counters used for rate limiting and adaptive difficulty live in the cache, are keyed by an HMAC of the network (never the raw IP) and expire within minutes. Even so, mention the CAPTCHA in your privacy policy; this is not legal advice.
 
 ## Running Behind a Reverse Proxy / Load Balancer
 

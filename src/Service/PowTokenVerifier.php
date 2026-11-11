@@ -178,7 +178,7 @@ class PowTokenVerifier
             $this->risk->recordFailure($ip);
         }
 
-        $this->logger->record($action, $result->ok, $result->reason, $result->difficulty);
+        $this->logger->record($action, $result->ok, $result->reason, $result->difficulty, $ip);
     }
 
     private function mac(string $payload, string $bucket): string
