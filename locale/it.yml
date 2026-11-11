@@ -16,11 +16,13 @@ peopleinside-powcaptcha:
       adaptive_help: "Aumenta automaticamente la difficoltà per le reti con ripetute verifiche fallite o molte registrazioni in pochi minuti, e per tutti durante un attacco al sito. Usa contatori anonimi temporanei in cache; non viene memorizzato nulla."
       protect_token_endpoint_label: Proteggi anche l'endpoint API di login (/api/token)
       protect_token_endpoint_help: "I bot possono accedere chiamando direttamente /api/token, saltando il modulo di login. Se attivo, le chiamate dirette devono includere un token CAPTCHA (GET /api/powcaptcha/challenge?action=token). Disattivalo se app mobile o altre integrazioni accedono tramite API senza browser."
-      log_enabled_label: Mantieni un registro eventi anonimo
-      log_enabled_help: "Memorizza orario, modulo, esito e motivo tecnico delle verifiche recenti, senza indirizzi IP né dati personali. Vengono conservati solo gli ultimi 30 successi e 30 fallimenti."
+      log_enabled_label: Mantieni un registro eventi
+      log_enabled_help: "Memorizza orario, modulo, esito e motivo tecnico delle verifiche recenti. Vengono conservati solo gli ultimi 30 successi e 30 fallimenti."
+      log_ip_label: Registra e visualizza gli indirizzi IP nei log
+      log_ip_help: "Memorizza e mostra l'indirizzo IP del visitatore accanto agli eventi nel registro CAPTCHA. Disattivato per impostazione predefinita: l'attivazione potrebbe avere implicazioni sulla gestione dei dati e sulla conformità al GDPR (gli indirizzi IP sono considerati dati personali)."
     logs:
       title: Ultimi eventi CAPTCHA
-      help: "Anonimo: non vengono memorizzati indirizzi IP, user agent né dati personali. Si conservano le ultime 30 verifiche riuscite e 30 fallite; le più vecchie vengono eliminate automaticamente."
+      help: "Si conservano le ultime 30 verifiche riuscite e 30 fallite; le più vecchie vengono eliminate automaticamente. Gli indirizzi IP vengono memorizzati e visualizzati solo se la relativa opzione è stata abilitata nelle impostazioni."
       refresh: Aggiorna
       clear: Svuota registro
       confirm_clear: Eliminare tutte le voci del registro CAPTCHA? L'operazione non è reversibile.
@@ -31,6 +33,7 @@ peopleinside-powcaptcha:
       filter_ok: Superati
       filter_fail: Falliti
       col_time: Data e ora
+      col_ip: Indirizzo IP
       col_form: Modulo
       col_result: Esito
       col_reason: Motivo

@@ -91,7 +91,8 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Difficulty level | 2 – Balanced | Level 1 = 3 hex zeros (~4k hashes), level 2 = 4 (~65k), level 3 = 5 (~1M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s (phones are 3–6× slower) |
 | Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
-| Keep an anonymous event log | on | Last 30 passed + 30 failed checks, no personal data |
+| Keep an event log | on | Last 30 passed + 30 failed checks |
+| Record and display IP addresses in CAPTCHA logs | **off** (disabled by default) | Stores and displays visitor IP addresses in logs. Disabled by default for privacy / GDPR compliance |
 
 ### Upgrading from 3.7.x
 

@@ -98,8 +98,13 @@ for($i=0;$i<50;$i++){ $v->verify('bad:1','login',new FakeReq('9.9.'.intdiv($i,20
 $fails=array_filter($b['db']->rows,fn($r)=>$r->result==='fail'); t('log keeps at most 30 failures', count($fails)<=30 && count($fails)>=29);
 for($i=0;$i<5;$i++){ $c=$v->issue('login',$req); $v->verify(solve($c['challenge'],$c['difficulty']),'login',$req);} 
 $oks=array_filter($b['db']->rows,fn($r)=>$r->result==='ok'); t('successes kept separately (not pushed out by failures)', count($oks)>=1);
-$cols=array_keys((array)$b['db']->rows[0]); sort($cols); t('log stores NO ip / user agent / personal data', $cols===['action','created_at','difficulty','id','reason','result']);
+$cols=array_keys((array)$b['db']->rows[0]); sort($cols); t('log columns match schema with ip column', $cols===['action','created_at','difficulty','id','ip','reason','result']);
+t('log stores null ip by default (log_ip disabled for GDPR)', $b['db']->rows[0]->ip === null);
+$b_ip=build(['peopleinside-powcaptcha.log_ip'=>'1']); $b_ip['v']->verify('bad:1','login',$req);
+t('log stores client IP when log_ip is enabled', $b_ip['db']->rows[0]->ip === $IP);
+t('latest() returns IP when log_ip is enabled', $b_ip['el']->latest()[0]['ip'] === $IP);
 $latest=$b['el']->latest(); t('latest() returns rows newest first', $latest[0]['id']>$latest[count($latest)-1]['id'] && isset($latest[0]['ts']));
+t('latest() masks IP to null when log_ip is disabled', $latest[0]['ip'] === null);
 $n=$b['el']->clear(); t('clear() empties the log', $n>0 && count($b['db']->rows)===0 && $b['el']->latest()===[]);
 $b=build(); $v=$b['v']; for($i=0;$i<200;$i++) $v->verify('bad:1','login',new FakeReq('9.'.intdiv($i,250).'.'.intdiv($i,50).'.'.($i%250+1)));
 t('flood: DB writes capped per minute (<=40)', count($b['db']->rows)<=40);

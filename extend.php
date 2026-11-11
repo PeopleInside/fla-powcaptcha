@@ -41,6 +41,7 @@ $extenders = [
         ->default('peopleinside-powcaptcha.enabled_forgot', true)
         ->default('peopleinside-powcaptcha.adaptive', true)
         ->default('peopleinside-powcaptcha.log_enabled', true)
+        ->default('peopleinside-powcaptcha.log_ip', false)
         ->default('peopleinside-powcaptcha.protect_token_endpoint', false)
         ->serializeToForum('peopleinside-powcaptcha.enabledLogin', 'peopleinside-powcaptcha.enabled_login', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.enabledSignup', 'peopleinside-powcaptcha.enabled_signup', 'boolval')

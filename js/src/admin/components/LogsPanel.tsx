@@ -12,6 +12,7 @@ interface LogRow {
     result: 'ok' | 'fail';
     reason: string;
     difficulty: number;
+    ip?: string | null;
 }
 
 type Filter = 'all' | 'ok' | 'fail';
@@ -20,15 +21,16 @@ const t = (key: string, params: Record<string, unknown> = {}) =>
     app.translator.trans('peopleinside-powcaptcha.admin.logs.' + key, params) as any;
 
 /**
- * Anonymous log of the latest CAPTCHA outcomes. The server stores no IP address,
- * user agent or personal data, keeps the latest 30 events per outcome and prunes
- * the rest on its own; this panel can also clear it manually.
+ * Event log of the latest CAPTCHA outcomes. The server keeps the latest 30 events
+ * per outcome and prunes the rest on its own; this panel can also clear it manually.
+ * IP addresses are recorded and shown only if explicitly enabled in the settings.
  */
 export default class LogsPanel extends Component {
     private rows: LogRow[] | null = null;
     private loading = false;
     private failed = false;
     private filter: Filter = 'all';
+    private showIp = false;
 
     oninit(vnode: any): void {
         super.oninit(vnode);
@@ -44,9 +46,10 @@ export default class LogsPanel extends Component {
         this.failed = false;
         m.redraw();
 
-        app.request<{ data: LogRow[] }>({ method: 'GET', url: this.endpoint() })
+        app.request<{ data: LogRow[]; show_ip?: boolean }>({ method: 'GET', url: this.endpoint() })
             .then((response) => {
                 this.rows = response?.data ?? [];
+                this.showIp = Boolean(response?.show_ip);
             })
             .catch(() => {
                 this.failed = true;
@@ -115,6 +118,7 @@ export default class LogsPanel extends Component {
                             <thead>
                                 <tr>
                                     <th>{t('col_time')}</th>
+                                    {this.showIp ? <th>{t('col_ip')}</th> : null}
                                     <th>{t('col_form')}</th>
                                     <th>{t('col_result')}</th>
                                     <th>{t('col_reason')}</th>
@@ -125,6 +129,7 @@ export default class LogsPanel extends Component {
                                 {rows.map((r) => (
                                     <tr key={r.id}>
                                         <td>{new Date(r.ts * 1000).toLocaleString()}</td>
+                                        {this.showIp ? <td><code>{r.ip || '–'}</code></td> : null}
                                         <td>{t('actions.' + r.action)}</td>
                                         <td>
                                             <span className={`PowLogs-badge PowLogs-badge--${r.result}`}>

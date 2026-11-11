@@ -35,7 +35,7 @@ class EventLogger
     ) {
     }
 
-    public function record(string $action, bool $ok, string $reason, int $difficulty): void
+    public function record(string $action, bool $ok, string $reason, int $difficulty, ?string $ip = null): void
     {
         if (! $this->settings->logEnabled()) {
             return;
@@ -55,12 +55,18 @@ class EventLogger
                 return;
             }
 
+            $ipToRecord = null;
+            if ($this->settings->logIp() && is_string($ip) && trim($ip) !== '') {
+                $ipToRecord = substr(trim($ip), 0, 45);
+            }
+
             $this->db->table(self::TABLE)->insert([
                 'created_at' => gmdate('Y-m-d H:i:s'),
                 'action' => in_array($action, self::ACTIONS, true) ? $action : 'login',
                 'result' => $result,
                 'reason' => in_array($reason, self::REASONS, true) ? $reason : 'malformed',
                 'difficulty' => max(0, min(9, $difficulty)),
+                'ip' => $ipToRecord,
             ]);
 
             $this->prune($result);
@@ -70,13 +76,19 @@ class EventLogger
         }
     }
 
-    /** @return list<array{id:int,ts:int,action:string,result:string,reason:string,difficulty:int}> */
+    /** @return list<array{id:int,ts:int,action:string,result:string,reason:string,difficulty:int,ip:?string}> */
     public function latest(): array
     {
         $rows = $this->db->table(self::TABLE)->orderByDesc('id')->limit(self::KEEP * 2)->get();
         $out = [];
+        $showIp = $this->settings->logIp();
 
         foreach ($rows as $row) {
+            $ipValue = null;
+            if ($showIp && isset($row->ip) && $row->ip !== null && (string)$row->ip !== '') {
+                $ipValue = (string) $row->ip;
+            }
+
             $out[] = [
                 'id' => (int) $row->id,
                 'ts' => (int) strtotime($row->created_at . ' UTC'),
@@ -84,6 +96,7 @@ class EventLogger
                 'result' => (string) $row->result,
                 'reason' => (string) $row->reason,
                 'difficulty' => (int) $row->difficulty,
+                'ip' => $ipValue,
             ];
         }
 

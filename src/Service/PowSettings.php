@@ -80,6 +80,11 @@ class PowSettings
         return $this->flag('log_enabled', true);
     }
 
+    public function logIp(): bool
+    {
+        return $this->flag('log_ip', false);
+    }
+
     public function enabledFor(string $action): bool
     {
         return match ($action) {

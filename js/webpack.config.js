@@ -2,8 +2,8 @@ const webpack = require('webpack');
 const flarumConfig = require('flarum-webpack-config');
 
 // Build id (shown in the browser console, see README "Troubleshooting"). The release version
-// itself stays 3.8.0; this only tells two builds of it apart.
-const BUILD = '3.8.0+' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
+// itself stays 3.8.1; this only tells two builds of it apart.
+const BUILD = '3.8.1+' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
 
 module.exports = function (env, args) {
     const config = typeof flarumConfig === 'function' ? flarumConfig(env, args) : flarumConfig;

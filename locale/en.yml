@@ -16,11 +16,13 @@ peopleinside-powcaptcha:
       adaptive_help: "Automatically raises the difficulty for networks with repeated failed checks or many sign-ups in a few minutes, and for everyone during a site-wide attack. Uses short-lived anonymous counters in the cache; nothing is stored."
       protect_token_endpoint_label: Also protect the API login endpoint (/api/token)
       protect_token_endpoint_help: "Bots can log in by calling /api/token directly, skipping the login form. When enabled, direct calls must carry a CAPTCHA token (GET /api/powcaptcha/challenge?action=token). Turn this off if mobile apps or other integrations log in through the API without a browser."
-      log_enabled_label: Keep an anonymous event log
-      log_enabled_help: "Stores the time, form, outcome and technical reason of recent checks, without IP addresses or any personal data. Only the latest 30 successes and 30 failures are kept."
+      log_enabled_label: Keep an event log
+      log_enabled_help: "Stores the time, form, outcome and technical reason of recent checks. Only the latest 30 successes and 30 failures are kept."
+      log_ip_label: Record and display IP addresses in CAPTCHA logs
+      log_ip_help: "Stores and displays the visitor IP address alongside events in the CAPTCHA log. Disabled by default: enabling this may have implications for data management and GDPR compliance (IP addresses are classified as personal data)."
     logs:
       title: Recent CAPTCHA events
-      help: "Anonymous: no IP address, user agent or personal data is stored. The latest 30 successful and 30 failed checks are kept; older entries are deleted automatically."
+      help: "The latest 30 successful and 30 failed checks are kept; older entries are deleted automatically. IP addresses are only recorded and displayed if explicitly enabled in the settings."
       refresh: Refresh
       clear: Clear log
       confirm_clear: Delete all CAPTCHA log entries? This cannot be undone.
@@ -31,6 +33,7 @@ peopleinside-powcaptcha:
       filter_ok: Passed
       filter_fail: Failed
       col_time: Time
+      col_ip: IP address
       col_form: Form
       col_result: Result
       col_reason: Reason
