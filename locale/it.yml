@@ -29,6 +29,9 @@ peopleinside-powcaptcha:
       cleared: Registro CAPTCHA svuotato.
       load_error: Impossibile caricare il registro.
       empty: Nessun evento registrato finora.
+      ip_status_active: Indirizzi IP visibili
+      ip_status_disabled: Indirizzi IP disattivati (GDPR)
+      ip_banner_disabled: "Gli indirizzi IP non vengono registrati né mostrati (opzione disattivata di default per conformità al GDPR). Per registrarli e visualizzarli, abilita l'opzione 'Registra e visualizza gli indirizzi IP nei log' tra le impostazioni sopra."
       filter_all: Tutti
       filter_ok: Superati
       filter_fail: Falliti

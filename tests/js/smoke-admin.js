@@ -3,9 +3,9 @@ const code=fs.readFileSync(require('path').join(__dirname, '..', '..', 'js', 'di
 const mods=new Map(), reg={_webpack_runtimes:{},add(){},get(ns,id){const m=mods.get(ns+':'+id); if(!m) console.log('NON TROVATO',id); return m;}};
 const registered=[]; const inits=[];
 class Component{ oninit(){} }
-const app={initializers:{add:(n,f)=>inits.push(f)}, translator:{trans:k=>k}, forum:{attribute:()=>'https://x/api'}, request:()=>Promise.resolve({data:[]}), alerts:{show(){}},
+const app={initializers:{add:(n,f)=>inits.push(f)}, translator:{trans:k=>k}, forum:{attribute:()=>'https://x/api'}, data:{settings:{}}, request:()=>Promise.resolve({data:[]}), alerts:{show(){}},
   registry:{for:(id)=>({registerSetting:(s)=>{registered.push({id,s}); return this;}})}};
-mods.set('core:admin/app',app); mods.set('core:common/Component',Component); mods.set('core:common/components/Button',()=>({})); mods.set('core:common/components/LoadingIndicator',()=>({}));
+mods.set('core:admin/app',app); mods.set('core:common/Component',Component); mods.set('core:common/components/Button',()=>({})); mods.set('core:common/components/LoadingIndicator',()=>({})); mods.set('core:common/components/Switch',()=>({}));
 const m=(t,a,...c)=>({t,a,c}); m.redraw=()=>{};
 const ctx=vm.createContext({flarum:{reg,extensions:{}},m,console,window:{},setTimeout,Promise,Error,Object,Array,String});
 try{
