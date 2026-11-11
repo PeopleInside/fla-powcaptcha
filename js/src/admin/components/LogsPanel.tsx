@@ -110,6 +110,12 @@ export default class LogsPanel extends Component {
                 </div>
 
                 {this.rows && !ipActive ? <p className="helpText">{t('ip_banner_disabled')}</p> : null}
+                {this.rows && ipActive ? (
+                    <p className="helpText PowLogs-gdpr">
+                        <i className="fas fa-exclamation-triangle" style="margin-right:4px;"></i>
+                        {t('ip_banner_enabled')}
+                    </p>
+                ) : null}
 
                 {this.loading && !this.rows ? <LoadingIndicator /> : null}
                 {this.failed ? <p className="PowLogs-error">{t('load_error')}</p> : null}

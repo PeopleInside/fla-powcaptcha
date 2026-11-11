@@ -92,7 +92,7 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
 | Keep an event log | on | Last 30 passed + 30 failed checks |
-| Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. Off by default (GDPR) |
+| Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x
 
