@@ -29,6 +29,11 @@ class PowSettings
     public const LOG_KEEP_MIN = 10;
     public const LOG_KEEP_MAX = 1000;
 
+    /** Age-based log retention: on by default, entries older than 30 days are deleted. */
+    public const LOG_MAX_AGE_DEFAULT = 30;
+    public const LOG_MAX_AGE_MIN = 1;
+    public const LOG_MAX_AGE_MAX = 365;
+
     /** Absolute ceiling for the ADAPTIVE bump, in bits (24 bits = ~16.7M hashes). */
     public const HARD_CAP = 24;
 
@@ -119,6 +124,27 @@ class PowSettings
         }
 
         return max(self::LOG_KEEP_MIN, min(self::LOG_KEEP_MAX, (int) $raw));
+    }
+
+    /** Whether log entries older than logMaxAgeDays() are deleted. On by default. */
+    public function logPruneByAge(): bool
+    {
+        return $this->flag('log_prune_age', true);
+    }
+
+    /**
+     * Maximum age of a log entry, in days. Default 30, clamped to 1-365. Invalid or
+     * empty values fall back to the default.
+     */
+    public function logMaxAgeDays(): int
+    {
+        $raw = $this->settings->get(self::PREFIX . 'log_max_age_days');
+
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return self::LOG_MAX_AGE_DEFAULT;
+        }
+
+        return max(self::LOG_MAX_AGE_MIN, min(self::LOG_MAX_AGE_MAX, (int) $raw));
     }
 
     public function behaviorChecks(): bool

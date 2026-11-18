@@ -12,7 +12,10 @@ use Psr\Log\LoggerInterface;
  * Privacy by design: only the time, the form, the outcome, a technical reason and
  * the difficulty are stored. No IP address (not even truncated or hashed), no user
  * agent, no username or e-mail. It keeps the last N events per outcome (N is the
- * `log_keep` setting, default 100) and deletes older rows automatically; admins can also clear it manually.
+ * `log_keep` setting, default 100) and deletes older rows automatically. Rows older than
+ * `log_max_age_days` (default 30, on by default via `log_prune_age`) are deleted too, so
+ * a quiet site does not keep old entries (and IPs, if enabled) indefinitely. Admins can
+ * also clear it manually.
  */
 class EventLogger
 {
@@ -84,6 +87,7 @@ class EventLogger
             $keep = $this->settings->logKeep();
             $this->prune('ok', $keep);
             $this->prune('fail', $keep);
+            $this->pruneOld();
         } catch (\Throwable $e) {
             // Logging must never break login or registration.
             $this->logger->warning('[fla-powcaptcha] Could not write the event log: ' . $e->getMessage());
@@ -93,6 +97,14 @@ class EventLogger
     /** @return list<array{id:int,ts:int,action:string,result:string,reason:string,difficulty:int,ip:?string}> */
     public function latest(): array
     {
+        // On a quiet site nothing is written, so the age limit is also enforced when
+        // the admin opens the log.
+        try {
+            $this->pruneOld();
+        } catch (\Throwable $e) {
+            $this->logger->warning('[fla-powcaptcha] Could not prune old log entries: ' . $e->getMessage());
+        }
+
         $rows = $this->db->table(self::TABLE)->orderByDesc('id')->limit($this->keep() * 2)->get();
         $out = [];
         $showIp = $this->settings->logIp();
@@ -136,6 +148,27 @@ class EventLogger
     public function keep(): int
     {
         return $this->settings->logKeep();
+    }
+
+    /** Maximum age of an entry in days, or null when age-based pruning is off. */
+    public function maxAgeDays(): ?int
+    {
+        return $this->settings->logPruneByAge() ? $this->settings->logMaxAgeDays() : null;
+    }
+
+    /** Deletes entries older than the configured number of days. Returns the rows deleted. */
+    public function pruneOld(): int
+    {
+        $days = $this->maxAgeDays();
+
+        if ($days === null) {
+            return 0;
+        }
+
+        // created_at is stored in UTC (see record()).
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $days * 86400);
+
+        return (int) $this->db->table(self::TABLE)->where('created_at', '<', $cutoff)->delete();
     }
 
     public function clear(): int

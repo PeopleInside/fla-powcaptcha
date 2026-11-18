@@ -27,6 +27,7 @@ class ListLogsController implements RequestHandlerInterface
             [
                 'data' => $this->logger->latest(),
                 'keep' => $this->logger->keep(),
+                'max_age_days' => $this->logger->maxAgeDays(),
                 'show_ip' => $this->settings->logIp(),
             ],
             200,
