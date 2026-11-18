@@ -45,19 +45,24 @@ jobs:
 
           mkdir -p staging/fla-powcaptcha
 
-          # Copia i file core dell'estensione
           cp -r extend.php composer.json autoload.php LICENSE README.md SECURITY.md CHANGELOG.md \
                 src migrations locale less staging/fla-powcaptcha/
 
-          # Copia solo i file JS pre-compilati e i manifest, senza tentare la build
           mkdir -p staging/fla-powcaptcha/js/dist
           cp -r js/dist/* staging/fla-powcaptcha/js/dist/
           cp js/package.json js/package-lock.json staging/fla-powcaptcha/js/ 2>/dev/null || true
 
-          # Crea l'archivio ZIP
           (cd staging && zip -r "../${ZIP_NAME}" fla-powcaptcha)
 
+          echo "ZIP creato con successo:"
           ls -lh "${ZIP_NAME}"
+
+      - name: Upload ZIP as Artifact (Disponibile per il download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fla-powcaptcha-${{ steps.get_version.outputs.version }}
+          path: fla-powcaptcha-${{ steps.get_version.outputs.version }}.zip
+          retention-days: 5
 
       - name: Upload ZIP to GitHub Release
         uses: softprops/action-gh-release@v2
