@@ -26,7 +26,7 @@ class ListLogsController implements RequestHandlerInterface
         return new JsonResponse(
             [
                 'data' => $this->logger->latest(),
-                'keep' => EventLogger::KEEP,
+                'keep' => $this->logger->keep(),
                 'show_ip' => $this->settings->logIp(),
             ],
             200,

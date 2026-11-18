@@ -44,6 +44,7 @@ $extenders = [
         ->default('peopleinside-powcaptcha.adaptive', true)
         ->default('peopleinside-powcaptcha.log_enabled', true)
         ->default('peopleinside-powcaptcha.log_ip', false)
+        ->default('peopleinside-powcaptcha.log_keep', 100)
         ->default('peopleinside-powcaptcha.protect_token_endpoint', false)
         ->default('peopleinside-powcaptcha.behavior_checks', true)
         ->default('peopleinside-powcaptcha.signup_limit', 2)
