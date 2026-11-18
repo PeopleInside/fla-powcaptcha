@@ -24,6 +24,7 @@ class EventLogger
     private const REASONS = [
         'ok', 'missing', 'malformed', 'wrong_action', 'bad_signature', 'wrong_network',
         'expired', 'too_fast', 'bad_solution', 'replayed', 'honeypot', 'cache_error',
+        'rate_limited', 'signup_limit', 'suspicious',
     ];
 
     public function __construct(

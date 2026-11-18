@@ -50,7 +50,12 @@ class ProtectTokenEndpoint implements MiddlewareInterface
 
         $result = CaptchaTokenExtractor::honeypotValue($body) !== ''
             ? $this->verifier->rejectHoneypot('token', $request)
-            : $this->verifier->verify(CaptchaTokenExtractor::fromRegistrationData($body), 'token', $request);
+            : $this->verifier->verify(
+                CaptchaTokenExtractor::fromRegistrationData($body),
+                'token',
+                $request,
+                CaptchaTokenExtractor::behaviorValue($body)
+            );
 
         if (! $result->ok) {
             throw new ValidationException([

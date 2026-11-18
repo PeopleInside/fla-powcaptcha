@@ -30,6 +30,12 @@ class CacheGuard
         return max(1, (int) $this->cache->get($key, 1));
     }
 
+    /** Stores a plain value for $ttl seconds (overwrites). */
+    public function put(string $key, int $value, int $ttl): void
+    {
+        $this->cache->put($key, $value, $ttl);
+    }
+
     public function count(string $key): int
     {
         return (int) $this->cache->get($key, 0);

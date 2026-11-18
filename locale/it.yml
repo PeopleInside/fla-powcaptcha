@@ -14,6 +14,14 @@ peopleinside-powcaptcha:
       level_3: "Livello 3 – Forte (≈ 1–3 s su PC, 5–10 s su smartphone, consigliato)"
       level_4: "Livello 4 – Molto forte (≈ 4–12 s su PC, 20–60 s su smartphone)"
       level_5: "Livello 5 – Massimo (≈ 15–50 s su PC, oltre 1–3 min su smartphone: solo in caso di attacco)"
+      signup_limit_label: "Massimo registrazioni per IP ogni 24 ore"
+      signup_limit_help: "Limite mobile di 24 ore agli account creabili dalla stessa rete (IPv6: stesso /64). 0 = nessun limite. Conta solo dopo la creazione effettiva dell'account; gli account creati da un admin sono ignorati. Viene salvato per 48 ore solo un hash con chiave della rete. Richiede il rilevamento corretto dell'IP reale dietro proxy/CDN (vedi README)."
+      login_limit_label: "Massimo tentativi di login per IP ogni 10 minuti"
+      login_limit_help: "Oltre questo limite la rete viene bloccata per 15 minuti (vale anche per /api/token se protetto). 0 = nessun limite."
+      forgot_limit_label: "Massimo richieste reset password per IP ogni ora"
+      forgot_limit_help: "Oltre questo limite la rete viene bloccata per 1 ora. 0 = nessun limite."
+      behavior_checks_label: "Controlli sul comportamento"
+      behavior_checks_help: "Rifiuta o rende più difficili le richieste che sembrano automatiche: User-Agent assente o da bot, Accept-Language assente, Origin cross-site e modulo inviato senza alcuna attività reale di mouse, tastiera o focus. Non viene salvato nulla."
       adaptive_label: Difficoltà adattiva
       adaptive_help: "Aumenta automaticamente la difficoltà per le reti con ripetute verifiche fallite o molte registrazioni in pochi minuti, e per tutti durante un attacco al sito. Usa contatori anonimi temporanei in cache; non viene memorizzato nulla."
       protect_token_endpoint_label: Proteggi anche l'endpoint API di login (/api/token)
@@ -61,6 +69,9 @@ peopleinside-powcaptcha:
         bad_solution: Prova di lavoro errata o insufficiente
         replayed: Token già utilizzato
         honeypot: Campo nascosto compilato (bot)
+        rate_limited: "Troppi tentativi da questa rete (bloccata)"
+        signup_limit: "Limite di registrazioni raggiunto per questa rete"
+        suspicious: "Comportamento automatico rilevato"
         cache_error: Cache non disponibile
 
   forum:
@@ -73,3 +84,5 @@ peopleinside-powcaptcha:
 
   validation:
     pow_captcha: Impossibile verificare il controllo di sicurezza. Riprova.
+    rate_limited: "Troppi tentativi dalla tua rete. Riprova più tardi."
+    signup_limit: "È stato raggiunto il numero massimo di registrazioni dalla tua rete. Riprova più tardi."

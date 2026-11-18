@@ -102,6 +102,40 @@ class PowSettings
         return $this->flag('log_ip', false);
     }
 
+    public function behaviorChecks(): bool
+    {
+        return $this->flag('behavior_checks', true);
+    }
+
+    /** Max successful registrations per network in 24 h (0 = unlimited). Default 2. */
+    public function signupLimit(): int
+    {
+        return $this->intSetting('signup_limit', 2, 100);
+    }
+
+    /** Max login attempts per network in 10 minutes (0 = unlimited). Default 10. */
+    public function loginLimit(): int
+    {
+        return $this->intSetting('login_limit', 10, 1000);
+    }
+
+    /** Max password-reset requests per network in 60 minutes (0 = unlimited). Default 3. */
+    public function forgotLimit(): int
+    {
+        return $this->intSetting('forgot_limit', 3, 1000);
+    }
+
+    private function intSetting(string $key, int $default, int $max): int
+    {
+        $raw = $this->settings->get(self::PREFIX . $key);
+
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return $default;
+        }
+
+        return max(0, min($max, (int) $raw));
+    }
+
     public function enabledFor(string $action): bool
     {
         return match ($action) {

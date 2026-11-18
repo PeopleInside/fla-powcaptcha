@@ -35,7 +35,12 @@ class ValidateRegistrationPow
 
         $result = CaptchaTokenExtractor::honeypotValue($event->data) !== ''
             ? $this->verifier->rejectHoneypot('signup')
-            : $this->verifier->verify(CaptchaTokenExtractor::fromRegistrationData($event->data), 'signup');
+            : $this->verifier->verify(
+                CaptchaTokenExtractor::fromRegistrationData($event->data),
+                'signup',
+                null,
+                CaptchaTokenExtractor::behaviorValue($event->data)
+            );
 
         if (! $result->ok) {
             throw new ValidationException([
