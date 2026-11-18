@@ -60,14 +60,22 @@ class EventLogger
                 $ipToRecord = substr(trim($ip), 0, 45);
             }
 
-            $this->db->table(self::TABLE)->insert([
+            $row = [
                 'created_at' => gmdate('Y-m-d H:i:s'),
                 'action' => in_array($action, self::ACTIONS, true) ? $action : 'login',
                 'result' => $result,
                 'reason' => in_array($reason, self::REASONS, true) ? $reason : 'malformed',
-                'difficulty' => max(0, min(9, $difficulty)),
+                'difficulty' => max(0, min(255, $difficulty)),
                 'ip' => $ipToRecord,
-            ]);
+            ];
+
+            // If `php flarum migrate` was not run after updating to 3.8.1, the `ip`
+            // column does not exist and every insert would fail silently (empty log).
+            if (! $this->hasIpColumn()) {
+                unset($row['ip']);
+            }
+
+            $this->db->table(self::TABLE)->insert($row);
 
             $this->prune($result);
         } catch (\Throwable $e) {
@@ -101,6 +109,21 @@ class EventLogger
         }
 
         return $out;
+    }
+
+    private function hasIpColumn(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            try {
+                $has = $this->db->getSchemaBuilder()->hasColumn(self::TABLE, 'ip');
+            } catch (\Throwable $e) {
+                $has = false;
+            }
+        }
+
+        return $has;
     }
 
     public function clear(): int

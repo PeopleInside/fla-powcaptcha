@@ -88,7 +88,7 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Enable on Login / Registration / Password Reset | on | Which forms are protected |
-| Difficulty level | 2 – Balanced | Level 1 = 3 hex zeros (~4k hashes), level 2 = 4 (~65k), level 3 = 5 (~1M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s (phones are 3–6× slower) |
+| Difficulty level | 3 – Strong | Measured in leading zero bits (each bit doubles the work): level 1 = 12 bits (~4k hashes), 2 = 16 (~65k), 3 = 20 (~1M), 4 = 22 (~4M), 5 = 24 (~16.8M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s / ≈ 4–12 s / ≈ 15–50 s (phones are 3–6× slower). Levels 4–5 are meant for use while under attack |
 | Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
 | Keep an event log | on | Last 30 passed + 30 failed checks |

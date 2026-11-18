@@ -21,7 +21,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * on the success path is the single-use marker.
  *
  * The client must find a nonce so that SHA-256("<challenge>:<nonce>") starts with
- * <difficulty> hexadecimal zeros.
+ * <difficulty> leading zero BITS (12-32). Challenges issued by 3.8.x carry a single
+ * digit (hex zeros); those are still accepted and converted (x4).
  */
 class PowTokenVerifier
 {
@@ -35,7 +36,7 @@ class PowTokenVerifier
     /** Minimum seconds between challenge issue and submit ("time trap"). */
     private const MIN_AGE_SECONDS = ['signup' => 2];
 
-    private const CHALLENGE_PATTERN = '/^v1\.([0-9a-f]{16})\.(\d{9,11})\.([3-9])\.([lsft])\.([01])\.([0-9a-f]{32})$/';
+    private const CHALLENGE_PATTERN = '/^v1\.([0-9a-f]{16})\.(\d{9,11})\.(\d{1,2})\.([lsft])\.([01])\.([0-9a-f]{32})$/';
 
     public function __construct(
         private readonly PowSettings $settings,
@@ -57,7 +58,10 @@ class PowTokenVerifier
 
         $ip = $this->clientIp($request);
         $bump = $this->risk->bump($ip, $action);
-        $difficulty = min($this->settings->maxDifficulty(), $this->settings->baseDifficulty() + $bump);
+        $difficulty = min(
+            $this->settings->maxDifficulty(),
+            $this->settings->baseDifficulty() + $bump * PowSettings::BITS_PER_STEP
+        );
 
         // Challenges handed to networks that already look abusive are tied to that
         // network, so they cannot be requested from a clean IP and used from a dirty one.
@@ -105,6 +109,22 @@ class PowTokenVerifier
         return $result;
     }
 
+    /**
+     * True when the hex digest starts with at least $bits zero bits.
+     * Whole hex digits are compared as text, the remaining 1-3 bits on the next digit.
+     */
+    public static function meetsDifficulty(string $hexHash, int $bits): bool
+    {
+        $zeros = intdiv($bits, 4);
+        $rest = $bits % 4;
+
+        if (! str_starts_with($hexHash, str_repeat('0', $zeros))) {
+            return false;
+        }
+
+        return $rest === 0 || hexdec($hexHash[$zeros]) < (16 >> $rest);
+    }
+
     protected function now(): int
     {
         return time();
@@ -134,6 +154,15 @@ class PowTokenVerifier
         [, $rand, $issuedAt, $difficulty, $code, $bound, $mac] = $m;
         $difficulty = (int) $difficulty;
 
+        // 3.8.x challenges carry a count of hex zeros (3-9): convert to bits.
+        if ($difficulty <= 9) {
+            $difficulty *= 4;
+        }
+
+        if ($difficulty < 12 || $difficulty > 32) {
+            return new VerifyResult(false, 'malformed');
+        }
+
         if (! isset(self::ACTIONS[$action]) || $code !== self::ACTIONS[$action]) {
             return new VerifyResult(false, 'wrong_action', $difficulty);
         }
@@ -155,7 +184,7 @@ class PowTokenVerifier
             return new VerifyResult(false, 'too_fast', $difficulty);
         }
 
-        if (! str_starts_with(hash('sha256', $challenge . ':' . $nonce), str_repeat('0', $difficulty))) {
+        if (! self::meetsDifficulty(hash('sha256', $challenge . ':' . $nonce), $difficulty)) {
             return new VerifyResult(false, 'bad_solution', $difficulty);
         }
 

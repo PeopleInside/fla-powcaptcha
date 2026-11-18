@@ -14,6 +14,7 @@ use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
 use PeopleInside\PowCaptcha\Middleware\CaptureClientContext;
 use PeopleInside\PowCaptcha\Middleware\ProtectTokenEndpoint;
+use PeopleInside\PowCaptcha\Middleware\RecordMissingSignupToken;
 use PeopleInside\PowCaptcha\Provider\PowServiceProvider;
 
 $extenders = [
@@ -35,7 +36,7 @@ $extenders = [
 
     // ── Settings ───────────────────────────────────────────────────────
     (new Extend\Settings())
-        ->default('peopleinside-powcaptcha.level', 2)
+        ->default('peopleinside-powcaptcha.level', 3)
         ->default('peopleinside-powcaptcha.enabled_login', true)
         ->default('peopleinside-powcaptcha.enabled_signup', true)
         ->default('peopleinside-powcaptcha.enabled_forgot', true)
@@ -73,6 +74,11 @@ $extenders = [
 if (class_exists(\Flarum\Extend\ApiResource::class) && class_exists(\Flarum\Api\Resource\UserResource::class)) {
     $extenders[] = (new Extend\ApiResource(\Flarum\Api\Resource\UserResource::class))
         ->fields(RegisterUserCaptchaFields::class);
+
+    // Sign-ups that arrive WITHOUT a token (bots posting straight to the API) never
+    // reach the field rule above, so they were neither logged nor counted.
+    $extenders[] = (new Extend\Middleware('api'))
+        ->insertBefore(ThrottleApi::class, RecordMissingSignupToken::class);
 } else {
     // Flarum 1.x: validate during User\Event\Saving (before core validation).
     $extenders[] = (new Extend\Event())

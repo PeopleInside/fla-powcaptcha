@@ -15,14 +15,24 @@ class PowSettings
 {
     public const PREFIX = 'peopleinside-powcaptcha.';
 
-    /** Leading hex zeros required at each level (16^n hashes on average). */
-    private const LEVEL_TO_DIFFICULTY = [1 => 3, 2 => 4, 3 => 5];
+    /**
+     * Difficulty is expressed in leading zero BITS of the SHA-256 hash (2^n hashes on
+     * average). Levels 1-3 are exactly the old 3/4/5 hex zeros (12/16/20 bits); levels
+     * 4-5 are finer steps above them. Note that each extra bit doubles the work.
+     */
+    private const LEVEL_TO_DIFFICULTY = [1 => 12, 2 => 16, 3 => 20, 4 => 22, 5 => 24];
 
-    /** Absolute ceiling, whatever the adaptive logic asks for (~16.7M hashes). */
-    public const HARD_CAP = 6;
+    public const MAX_LEVEL = 5;
+    public const DEFAULT_LEVEL = 3;
 
-    /** Maximum extra zeros the adaptive logic may add on top of the base level. */
+    /** Absolute ceiling for the ADAPTIVE bump, in bits (24 bits = ~16.7M hashes). */
+    public const HARD_CAP = 24;
+
+    /** Maximum number of adaptive steps added on top of the base level. */
     public const MAX_ADAPTIVE_BUMP = 2;
+
+    /** Bits added by each adaptive step (4 bits = one old hex zero = 16x the work). */
+    public const BITS_PER_STEP = 4;
 
     public function __construct(private readonly SettingsRepositoryInterface $settings)
     {
@@ -32,7 +42,7 @@ class PowSettings
     {
         $raw = $this->settings->get(self::PREFIX . 'level');
 
-        if (is_numeric($raw) && (int) $raw >= 1 && (int) $raw <= 3) {
+        if (is_numeric($raw) && (int) $raw >= 1 && (int) $raw <= self::MAX_LEVEL) {
             return (int) $raw;
         }
 
@@ -46,7 +56,7 @@ class PowSettings
     public static function levelFromLegacyDifficulty(mixed $value): int
     {
         if (! is_numeric($value)) {
-            return 2;
+            return self::DEFAULT_LEVEL;
         }
 
         $legacy = (int) $value;
@@ -60,14 +70,21 @@ class PowSettings
         };
     }
 
+    /** Base difficulty of the configured level, in leading zero bits. */
     public function baseDifficulty(): int
     {
         return self::LEVEL_TO_DIFFICULTY[$this->level()];
     }
 
+    /**
+     * Highest difficulty the adaptive logic may reach, in bits. Never lower than the
+     * base level itself (levels 4-5 are already at or near the adaptive ceiling).
+     */
     public function maxDifficulty(): int
     {
-        return min(self::HARD_CAP, $this->baseDifficulty() + self::MAX_ADAPTIVE_BUMP);
+        $base = $this->baseDifficulty();
+
+        return max($base, min(self::HARD_CAP, $base + self::MAX_ADAPTIVE_BUMP * self::BITS_PER_STEP));
     }
 
     public function adaptive(): bool
