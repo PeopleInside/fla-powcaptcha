@@ -29,6 +29,11 @@ class PowSettings
     public const LOG_KEEP_MIN = 10;
     public const LOG_KEEP_MAX = 1000;
 
+    /** Age-based log retention: on by default, entries older than 30 days are deleted. */
+    public const LOG_MAX_AGE_DEFAULT = 30;
+    public const LOG_MAX_AGE_MIN = 1;
+    public const LOG_MAX_AGE_MAX = 365;
+
     /** Absolute ceiling for the ADAPTIVE bump, in bits (24 bits = ~16.7M hashes). */
     public const HARD_CAP = 24;
 
@@ -119,6 +124,80 @@ class PowSettings
         }
 
         return max(self::LOG_KEEP_MIN, min(self::LOG_KEEP_MAX, (int) $raw));
+    }
+
+    /** Whether log entries older than logMaxAgeDays() are deleted. On by default. */
+    public function logPruneByAge(): bool
+    {
+        return $this->flag('log_prune_age', true);
+    }
+
+    /**
+     * Maximum age of a log entry, in days. Default 30, clamped to 1-365. Invalid or
+     * empty values fall back to the default.
+     */
+    public function logMaxAgeDays(): int
+    {
+        $raw = $this->settings->get(self::PREFIX . 'log_max_age_days');
+
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return self::LOG_MAX_AGE_DEFAULT;
+        }
+
+        return max(self::LOG_MAX_AGE_MIN, min(self::LOG_MAX_AGE_MAX, (int) $raw));
+    }
+
+    /** Whether the short privacy notice is shown under the CAPTCHA. On by default. */
+    public function privacyNotice(): bool
+    {
+        return $this->flag('privacy_notice', true);
+    }
+
+    public const PRIVACY_ALIGNMENTS = ['left', 'center', 'right'];
+
+    /** Alignment of the privacy link under the CAPTCHA: left (default), center or right. */
+    public function privacyAlign(): string
+    {
+        return self::sanitizeAlign($this->settings->get(self::PREFIX . 'privacy_align'));
+    }
+
+    public static function sanitizeAlign(mixed $value): string
+    {
+        return is_string($value) && in_array($value, self::PRIVACY_ALIGNMENTS, true) ? $value : 'left';
+    }
+
+    /** Optional link to the site's privacy policy (empty = no link). Always sanitised. */
+    public function privacyUrl(): string
+    {
+        return self::sanitizeUrl($this->settings->get(self::PREFIX . 'privacy_url'));
+    }
+
+    /**
+     * Accepts only absolute http(s) URLs or site-relative paths ("/privacy"); anything
+     * else (javascript:, data:, protocol-relative //host, garbage) becomes ''. The value
+     * ends up in an href visible to every visitor, so it is never trusted as stored.
+     */
+    public static function sanitizeUrl(mixed $value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $url = trim($value);
+
+        if ($url === '' || strlen($url) > 2048 || preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
+            return '';
+        }
+
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//') && ! str_contains($url, '\\')) {
+            return $url;
+        }
+
+        if (preg_match('#^https?://#i', $url) === 1 && filter_var($url, FILTER_VALIDATE_URL) !== false) {
+            return $url;
+        }
+
+        return '';
     }
 
     public function behaviorChecks(): bool

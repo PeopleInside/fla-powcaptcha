@@ -23,7 +23,7 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 🔁 **Atomic single use** – a token can be consumed only once, even with parallel requests (uses a cache lock when available)
 - 🪤 **Honeypot and time trap** – invisible traps for form-filling bots (sign-up must take at least 2 s)
 - 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
-- 📋 **Event log** in the admin panel – last 100 passed / 100 failed checks by default (configurable, 10–1000), self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
+- 📋 **Event log** in the admin panel – last 100 passed / 100 failed checks by default (configurable, 10–1000) and nothing older than 30 days by default (configurable, 1–365), self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
 - 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
 
@@ -93,6 +93,11 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
 | Keep an event log | on | Stores recent passed and failed checks |
 | Log entries to keep (per outcome) | 100 | How many passed and how many failed checks are kept (10–1000); older rows are pruned automatically, also right after you lower the value |
+| Also delete log entries older than a number of days | **on** | Deletes entries older than the number of days below, even when the log has not reached its size limit. Runs on every write and whenever the admin opens the log |
+| Delete log entries older than (days) | 30 | Retention in days (1–365). Raise it to look further back; lower it to store less personal data |
+| Show a privacy notice under the CAPTCHA | **on** | Small *Privacy* button under the CAPTCHA that opens a short explanation (no cookies, no third parties, what is processed). The text adapts to your settings: behaviour checks, IP logging and retention days. It does not replace your privacy policy |
+| Privacy link alignment | left | Left / center / right under the CAPTCHA. The popover always spans the full width of the form |
+| Privacy policy link (optional) | empty | Absolute `https://` address or a site path such as `/privacy`; shown as a link inside the notice. Anything else (`javascript:`, `data:`, `//host`…) is ignored. Edit the wording with a language pack / Linguist (keys `peopleinside-powcaptcha.forum.privacy.*`) |
 | Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x
@@ -126,7 +131,7 @@ The PHP logic is covered by plain-PHP tests (no Flarum installation required): `
 
 ### Anonymous log and privacy
 
-The log stores time, form, outcome, a technical reason and difficulty. By default it stores no IP address; only if an administrator enables *Record and display IP addresses in CAPTCHA logs* is the visitor IP (as seen in `REMOTE_ADDR`) added. It never stores user agents, usernames or e-mail addresses. Abuse counters used for rate limiting and adaptive difficulty live in the cache, are keyed by an HMAC of the network (never the raw IP) and expire within minutes. Even so, mention the CAPTCHA in your privacy policy; this is not legal advice.
+The log stores time, form, outcome, a technical reason and difficulty. Entries older than 30 days are deleted automatically (the admin can change the number of days or turn this off). By default it stores no IP address; only if an administrator enables *Record and display IP addresses in CAPTCHA logs* is the visitor IP (as seen in `REMOTE_ADDR`) added. It never stores user agents, usernames or e-mail addresses. Abuse counters used for rate limiting and adaptive difficulty live in the cache, are keyed by an HMAC of the network (never the raw IP) and expire within minutes. Even so, mention the CAPTCHA in your privacy policy; this is not legal advice.
 
 ## Running Behind a Reverse Proxy / Load Balancer
 

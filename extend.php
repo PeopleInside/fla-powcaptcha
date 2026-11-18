@@ -17,6 +17,7 @@ use PeopleInside\PowCaptcha\Middleware\CaptureClientContext;
 use PeopleInside\PowCaptcha\Middleware\ProtectTokenEndpoint;
 use PeopleInside\PowCaptcha\Middleware\RecordMissingSignupToken;
 use PeopleInside\PowCaptcha\Provider\PowServiceProvider;
+use PeopleInside\PowCaptcha\Service\PowSettings;
 
 $extenders = [
     // ── Frontend assets ────────────────────────────────────────────────
@@ -45,6 +46,11 @@ $extenders = [
         ->default('peopleinside-powcaptcha.log_enabled', true)
         ->default('peopleinside-powcaptcha.log_ip', false)
         ->default('peopleinside-powcaptcha.log_keep', 100)
+        ->default('peopleinside-powcaptcha.log_prune_age', true)
+        ->default('peopleinside-powcaptcha.log_max_age_days', 30)
+        ->default('peopleinside-powcaptcha.privacy_notice', true)
+        ->default('peopleinside-powcaptcha.privacy_url', '')
+        ->default('peopleinside-powcaptcha.privacy_align', 'left')
         ->default('peopleinside-powcaptcha.protect_token_endpoint', false)
         ->default('peopleinside-powcaptcha.behavior_checks', true)
         ->default('peopleinside-powcaptcha.signup_limit', 2)
@@ -52,7 +58,17 @@ $extenders = [
         ->default('peopleinside-powcaptcha.forgot_limit', 3)
         ->serializeToForum('peopleinside-powcaptcha.enabledLogin', 'peopleinside-powcaptcha.enabled_login', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.enabledSignup', 'peopleinside-powcaptcha.enabled_signup', 'boolval')
-        ->serializeToForum('peopleinside-powcaptcha.enabledForgot', 'peopleinside-powcaptcha.enabled_forgot', 'boolval'),
+        ->serializeToForum('peopleinside-powcaptcha.enabledForgot', 'peopleinside-powcaptcha.enabled_forgot', 'boolval')
+        // Privacy notice under the CAPTCHA. The forum only receives what the notice must
+        // disclose (what is processed), so the text can match the admin's settings.
+        ->serializeToForum('peopleinside-powcaptcha.privacyNotice', 'peopleinside-powcaptcha.privacy_notice', 'boolval')
+        ->serializeToForum('peopleinside-powcaptcha.privacyUrl', 'peopleinside-powcaptcha.privacy_url', fn ($value) => PowSettings::sanitizeUrl($value))
+        ->serializeToForum('peopleinside-powcaptcha.privacyAlign', 'peopleinside-powcaptcha.privacy_align', fn ($value) => PowSettings::sanitizeAlign($value))
+        ->serializeToForum('peopleinside-powcaptcha.privacyBehavior', 'peopleinside-powcaptcha.behavior_checks', 'boolval')
+        ->serializeToForum('peopleinside-powcaptcha.privacyLogEnabled', 'peopleinside-powcaptcha.log_enabled', 'boolval')
+        ->serializeToForum('peopleinside-powcaptcha.privacyLogIp', 'peopleinside-powcaptcha.log_ip', 'boolval')
+        ->serializeToForum('peopleinside-powcaptcha.privacyLogPrune', 'peopleinside-powcaptcha.log_prune_age', 'boolval')
+        ->serializeToForum('peopleinside-powcaptcha.privacyLogDays', 'peopleinside-powcaptcha.log_max_age_days', 'intval'),
 
     // ── API routes: challenge issuing + admin-only event log ───────────
     (new Extend\Routes('api'))
