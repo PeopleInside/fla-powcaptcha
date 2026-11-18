@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.9.0
+
+### Changed
+- **Default level is now 3** (was 2). A migration moves installations still on level 2 to 3; any other level an administrator picked is left untouched.
+- **Difficulty is now measured in bits** instead of hex zeros, so levels can be finer than 16x. Levels 1-3 are unchanged (12 / 16 / 20 bits). **New levels 4 (22 bits) and 5 (24 bits).** Each bit doubles the work. Challenges issued by 3.8.x (single digit) are still accepted for their 5-minute lifetime.
+- Adaptive bump is unchanged in effect (+4 bits per step, up to +8, ceiling 24 bits) and never goes below the configured level.
+
+### Fixed
+- **Sign-ups sent without any token** (bots posting directly to the API) were rejected by the `required` rule before the PoW rule ran, so they were never written to the event log and never counted by the adaptive difficulty. They are now logged as `missing`/`honeypot` and feed the adaptive counters (new middleware `RecordMissingSignupToken`, Flarum 2.x).
+- If `php flarum migrate` had not been run after 3.8.1, the missing `ip` column made **every** log insert fail silently (empty log). The logger now detects the missing column and writes without it.
+- Event-log `difficulty` is no longer clamped to 9 (it is now a bit count).
+
+### Notes
+- `js/dist` was patched directly (solver and admin select); `js/src` is not part of this archive, so the same change must be applied to `js/src/forum/solver.ts` and `js/src/admin` before the next rebuild. The stale source maps were removed.
+
 ## 3.8.1
 
 ### Added

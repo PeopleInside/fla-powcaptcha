@@ -8,10 +8,12 @@ peopleinside-powcaptcha:
       enabled_forgot_label: Abilita CAPTCHA sul Recupero Password
       enabled_forgot_help: Mostra la verifica di sicurezza PoW nel modulo di recupero password.
       level_label: Livello di difficoltà
-      level_help: "Il lavoro che il browser di ogni visitatore deve svolgere. I tempi sono indicativi, misurati su un PC recente; gli smartphone sono 3–6 volte più lenti. Con la difficoltà adattiva attiva, le reti con comportamenti sospetti ricevono automaticamente fino a due livelli in più."
+      level_help: "Il lavoro che il browser di ogni visitatore deve svolgere. I tempi sono indicativi, misurati su un PC recente; gli smartphone sono 3–6 volte più lenti. Con la difficoltà adattiva attiva, le reti con comportamenti sospetti ricevono automaticamente fino a 8 bit in più (fino a 24 bit in totale). Ogni bit raddoppia il lavoro: i livelli 4 e 5 penalizzano molto chi usa uno smartphone, valuta di usarli solo durante un attacco."
       level_1: "Livello 1 – Leggero (istantaneo su PC)"
-      level_2: "Livello 2 – Bilanciato (≈ 0,1 s su PC, consigliato)"
-      level_3: "Livello 3 – Forte (≈ 1–3 s su PC, 5–10 s su smartphone)"
+      level_2: "Livello 2 – Bilanciato (≈ 0,1 s su PC)"
+      level_3: "Livello 3 – Forte (≈ 1–3 s su PC, 5–10 s su smartphone, consigliato)"
+      level_4: "Livello 4 – Molto forte (≈ 4–12 s su PC, 20–60 s su smartphone)"
+      level_5: "Livello 5 – Massimo (≈ 15–50 s su PC, oltre 1–3 min su smartphone: solo in caso di attacco)"
       adaptive_label: Difficoltà adattiva
       adaptive_help: "Aumenta automaticamente la difficoltà per le reti con ripetute verifiche fallite o molte registrazioni in pochi minuti, e per tutti durante un attacco al sito. Usa contatori anonimi temporanei in cache; non viene memorizzato nulla."
       protect_token_endpoint_label: Proteggi anche l'endpoint API di login (/api/token)
@@ -39,7 +41,7 @@ peopleinside-powcaptcha:
       col_form: Modulo
       col_result: Esito
       col_reason: Motivo
-      col_difficulty: Difficoltà
+      col_difficulty: Difficoltà (bit)
       result_ok: Superato
       result_fail: Fallito
       actions:
