@@ -45,13 +45,16 @@ jobs:
 
           mkdir -p staging/fla-powcaptcha
 
+          # Copia i file core dell'estensione
           cp -r extend.php composer.json autoload.php LICENSE README.md SECURITY.md CHANGELOG.md \
                 src migrations locale less staging/fla-powcaptcha/
 
+          # Copia solo i file JS pre-compilati e i manifest, senza tentare la build
           mkdir -p staging/fla-powcaptcha/js/dist
           cp -r js/dist/* staging/fla-powcaptcha/js/dist/
           cp js/package.json js/package-lock.json staging/fla-powcaptcha/js/ 2>/dev/null || true
 
+          # Crea l'archivio ZIP
           (cd staging && zip -r "../${ZIP_NAME}" fla-powcaptcha)
 
           ls -lh "${ZIP_NAME}"
