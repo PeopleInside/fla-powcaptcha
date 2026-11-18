@@ -50,6 +50,7 @@ $extenders = [
         ->default('peopleinside-powcaptcha.log_max_age_days', 30)
         ->default('peopleinside-powcaptcha.privacy_notice', true)
         ->default('peopleinside-powcaptcha.privacy_url', '')
+        ->default('peopleinside-powcaptcha.privacy_align', 'left')
         ->default('peopleinside-powcaptcha.protect_token_endpoint', false)
         ->default('peopleinside-powcaptcha.behavior_checks', true)
         ->default('peopleinside-powcaptcha.signup_limit', 2)
@@ -62,6 +63,7 @@ $extenders = [
         // disclose (what is processed), so the text can match the admin's settings.
         ->serializeToForum('peopleinside-powcaptcha.privacyNotice', 'peopleinside-powcaptcha.privacy_notice', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.privacyUrl', 'peopleinside-powcaptcha.privacy_url', fn ($value) => PowSettings::sanitizeUrl($value))
+        ->serializeToForum('peopleinside-powcaptcha.privacyAlign', 'peopleinside-powcaptcha.privacy_align', fn ($value) => PowSettings::sanitizeAlign($value))
         ->serializeToForum('peopleinside-powcaptcha.privacyBehavior', 'peopleinside-powcaptcha.behavior_checks', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.privacyLogEnabled', 'peopleinside-powcaptcha.log_enabled', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.privacyLogIp', 'peopleinside-powcaptcha.log_ip', 'boolval')

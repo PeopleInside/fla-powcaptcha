@@ -153,6 +153,19 @@ class PowSettings
         return $this->flag('privacy_notice', true);
     }
 
+    public const PRIVACY_ALIGNMENTS = ['left', 'center', 'right'];
+
+    /** Alignment of the privacy link under the CAPTCHA: left (default), center or right. */
+    public function privacyAlign(): string
+    {
+        return self::sanitizeAlign($this->settings->get(self::PREFIX . 'privacy_align'));
+    }
+
+    public static function sanitizeAlign(mixed $value): string
+    {
+        return is_string($value) && in_array($value, self::PRIVACY_ALIGNMENTS, true) ? $value : 'left';
+    }
+
     /** Optional link to the site's privacy policy (empty = no link). Always sanitised. */
     public function privacyUrl(): string
     {

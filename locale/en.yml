@@ -40,6 +40,11 @@ peopleinside-powcaptcha:
       privacy_notice_help: "Enabled by default. Shows a small \"Privacy\" link under the CAPTCHA that opens a short explanation of what the check processes. The text adapts to your settings (behaviour checks, IP logging, retention). It does not replace your privacy policy."
       privacy_url_label: "Privacy policy link (optional)"
       privacy_url_help: "Full address (https://...) or a path on your site (/privacy). If set, the notice includes a link to it. Leave empty to show the notice without a link. Other kinds of address are ignored."
+      privacy_align_label: "Privacy link alignment"
+      privacy_align_help: "Where the Privacy link sits under the CAPTCHA. Left lines it up with the check status; Center matches the centered Flarum forms. The explanation popover always uses the full width of the form."
+      privacy_align_left: Left
+      privacy_align_center: Center
+      privacy_align_right: Right
     logs:
       title: Recent CAPTCHA events
       help: "The latest {count} successful and {count} failed checks are kept; older entries are deleted automatically. IP addresses are only recorded and displayed if explicitly enabled in the settings."
