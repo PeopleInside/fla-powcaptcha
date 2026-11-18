@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g. 3.8.1)'
+        description: 'Version number (e.g. 3.10.0)'
         required: false
-        default: '3.8.1'
+        default: '3.10.0'
 
 permissions:
   contents: write
@@ -23,20 +23,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: js/package-lock.json
-
-      - name: Install dependencies and compile JavaScript bundles
-        run: |
-          cd js
-          npm ci
-          npm run build
-          cd ..
-
       - name: Determine release version
         id: get_version
         run: |
@@ -47,7 +33,6 @@ jobs:
           else
             TAG="${{ github.ref_name }}"
           fi
-          # Strip leading 'v' if present for clean version number
           VERSION="${TAG#v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
@@ -58,19 +43,15 @@ jobs:
           ZIP_NAME="fla-powcaptcha-${VERSION}.zip"
           echo "Building ${ZIP_NAME}..."
 
-          # Staging directory for clean archive structure
           mkdir -p staging/fla-powcaptcha
 
-          # Copy core extension files
           cp -r extend.php composer.json autoload.php LICENSE README.md SECURITY.md CHANGELOG.md \
                 src migrations locale less staging/fla-powcaptcha/
 
-          # Copy compiled frontend assets and package manifests
           mkdir -p staging/fla-powcaptcha/js/dist
           cp -r js/dist/* staging/fla-powcaptcha/js/dist/
           cp js/package.json js/package-lock.json staging/fla-powcaptcha/js/ 2>/dev/null || true
 
-          # Create the versioned ZIP archive
           (cd staging && zip -r "../${ZIP_NAME}" fla-powcaptcha)
 
           ls -lh "${ZIP_NAME}"
