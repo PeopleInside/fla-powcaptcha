@@ -2,6 +2,9 @@
 
 namespace PeopleInside\PowCaptcha\Service;
 
+use Flarum\Foundation\ValidationException;
+use Flarum\Locale\Translator;
+use PeopleInside\PowCaptcha\Support\BehaviorAnalyzer;
 use PeopleInside\PowCaptcha\Support\CacheGuard;
 use PeopleInside\PowCaptcha\Support\ClientContext;
 use PeopleInside\PowCaptcha\Support\Ip;
@@ -34,7 +37,7 @@ class PowTokenVerifier
     public const ACTIONS = ['login' => 'l', 'signup' => 's', 'forgot' => 'f', 'token' => 't'];
 
     /** Minimum seconds between challenge issue and submit ("time trap"). */
-    private const MIN_AGE_SECONDS = ['signup' => 2];
+    private const MIN_AGE_SECONDS = ['signup' => 3, 'forgot' => 2, 'login' => 1];
 
     private const CHALLENGE_PATTERN = '/^v1\.([0-9a-f]{16})\.(\d{9,11})\.(\d{1,2})\.([lsft])\.([01])\.([0-9a-f]{32})$/';
 
@@ -43,7 +46,9 @@ class PowTokenVerifier
         private readonly RiskTracker $risk,
         private readonly EventLogger $logger,
         private readonly CacheGuard $cache,
-        private readonly ClientContext $context
+        private readonly ClientContext $context,
+        private readonly AbuseGuard $guard,
+        private readonly Translator $translator
     ) {
     }
 
@@ -89,14 +94,67 @@ class PowTokenVerifier
      * Verifies a `challenge:nonce` token for the given form, consuming it on success.
      * Every outcome feeds the anonymous event log and the abuse counters.
      */
-    public function verify(string $token, string $action, ?ServerRequestInterface $request = null): VerifyResult
-    {
+    public function verify(
+        string $token,
+        string $action,
+        ?ServerRequestInterface $request = null,
+        ?string $behavior = null
+    ): VerifyResult {
         $ip = $this->clientIp($request);
+
+        $this->gate($action, $ip, $behavior);
+
         $result = $this->evaluate($token, $action, $ip);
 
         $this->finish($result, $action, $ip);
 
         return $result;
+    }
+
+    /**
+     * Abuse gate, run before the PoW is even looked at: per-network limits and
+     * behaviour heuristics. Throws a user-facing validation error when blocked.
+     */
+    private function gate(string $action, string $ip, ?string $behavior): void
+    {
+        $limited = $action === 'signup'
+            ? $this->guard->signupRetryAfter($ip)
+            : 0;
+
+        if ($limited > 0) {
+            $this->logger->record($action, false, 'signup_limit', 0, $ip);
+
+            throw new ValidationException([
+                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.signup_limit')],
+            ]);
+        }
+
+        if ($this->guard->attemptRetryAfter($action, $ip) > 0) {
+            $this->logger->record($action, false, 'rate_limited', 0, $ip);
+
+            throw new ValidationException([
+                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.rate_limited')],
+            ]);
+        }
+
+        if (! $this->settings->behaviorChecks()) {
+            return;
+        }
+
+        $score = $this->context->headerScore() + BehaviorAnalyzer::interactionScore($behavior);
+
+        if ($score >= BehaviorAnalyzer::REJECT_AT) {
+            $this->finish(new VerifyResult(false, 'suspicious'), $action, $ip);
+
+            throw new ValidationException([
+                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')],
+            ]);
+        }
+
+        if ($score > 0 && Ip::isPublic($ip)) {
+            // Soft signal: not enough to block, but the next challenge gets harder.
+            $this->risk->recordFailure($ip);
+        }
     }
 
     /** Records a honeypot hit as a failed attempt. */

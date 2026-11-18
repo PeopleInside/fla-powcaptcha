@@ -46,7 +46,12 @@ class AddPowValidatorRule
                     return $this->verifier->rejectHoneypot($action)->ok;
                 }
 
-                return $this->verifier->verify(is_string($value) ? $value : '', $action)->ok;
+                return $this->verifier->verify(
+                    is_string($value) ? $value : '',
+                    $action,
+                    null,
+                    CaptchaTokenExtractor::behaviorValue($laravelValidator->getData())
+                )->ok;
             }
         );
 

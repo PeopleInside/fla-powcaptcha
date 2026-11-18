@@ -11,6 +11,7 @@ use PeopleInside\PowCaptcha\Controller\ClearLogsController;
 use PeopleInside\PowCaptcha\Controller\ListLogsController;
 use PeopleInside\PowCaptcha\Controller\PowCaptchaChallengeController;
 use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
+use PeopleInside\PowCaptcha\Listener\RecordRegistration;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
 use PeopleInside\PowCaptcha\Middleware\CaptureClientContext;
 use PeopleInside\PowCaptcha\Middleware\ProtectTokenEndpoint;
@@ -44,6 +45,10 @@ $extenders = [
         ->default('peopleinside-powcaptcha.log_enabled', true)
         ->default('peopleinside-powcaptcha.log_ip', false)
         ->default('peopleinside-powcaptcha.protect_token_endpoint', false)
+        ->default('peopleinside-powcaptcha.behavior_checks', true)
+        ->default('peopleinside-powcaptcha.signup_limit', 2)
+        ->default('peopleinside-powcaptcha.login_limit', 10)
+        ->default('peopleinside-powcaptcha.forgot_limit', 3)
         ->serializeToForum('peopleinside-powcaptcha.enabledLogin', 'peopleinside-powcaptcha.enabled_login', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.enabledSignup', 'peopleinside-powcaptcha.enabled_signup', 'boolval')
         ->serializeToForum('peopleinside-powcaptcha.enabledForgot', 'peopleinside-powcaptcha.enabled_forgot', 'boolval'),
@@ -68,6 +73,10 @@ $extenders = [
 
     (new Extend\Validator(ForgotPasswordValidator::class))
         ->configure(AddPowValidatorRule::class),
+
+    // ── Daily sign-up limit per network ────────────────────────────────
+    (new Extend\Event())
+        ->listen(\Flarum\User\Event\Registered::class, RecordRegistration::class),
 ];
 
 // Flarum 2.x: register captchaToken on the User JSON:API resource.

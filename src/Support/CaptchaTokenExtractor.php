@@ -15,6 +15,9 @@ final class CaptchaTokenExtractor
      */
     public const HONEYPOT_FIELD = 'pow_website';
 
+    /** Client interaction summary sent by the widget (see BehaviorAnalyzer). */
+    public const BEHAVIOR_FIELD = 'pow_behavior';
+
     /**
      * Extract the PoW token from registration payloads across Flarum 1.x and 2.x.
      */
@@ -25,6 +28,15 @@ final class CaptchaTokenExtractor
             ?? Arr::get($data, 'data.attributes.captchaToken');
 
         return is_string($token) ? $token : '';
+    }
+
+    public static function behaviorValue(array $data): ?string
+    {
+        $value = Arr::get($data, 'attributes.' . self::BEHAVIOR_FIELD)
+            ?? Arr::get($data, self::BEHAVIOR_FIELD)
+            ?? Arr::get($data, 'data.attributes.' . self::BEHAVIOR_FIELD);
+
+        return is_string($value) ? substr($value, 0, 40) : null;
     }
 
     /**

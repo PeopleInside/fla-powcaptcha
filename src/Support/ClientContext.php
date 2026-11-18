@@ -3,15 +3,16 @@
 namespace PeopleInside\PowCaptcha\Support;
 
 /**
- * Request-scoped holder for the client IP.
+ * Request-scoped holder for the client IP and the header-based suspicion score.
  *
  * Flarum's login / forgot-password validators (and the Flarum 1.x user "Saving"
- * event) do not receive the HTTP request, so a tiny middleware stores the IP
- * here and the verifier reads it back.
+ * event) do not receive the HTTP request, so a tiny middleware stores what the
+ * verifier needs here.
  */
 final class ClientContext
 {
     private string $ip = '';
+    private int $headerScore = 0;
 
     public function setIp(string $ip): void
     {
@@ -21,5 +22,15 @@ final class ClientContext
     public function ip(): string
     {
         return $this->ip;
+    }
+
+    public function setHeaderScore(int $score): void
+    {
+        $this->headerScore = $score;
+    }
+
+    public function headerScore(): int
+    {
+        return $this->headerScore;
     }
 }

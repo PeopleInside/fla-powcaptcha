@@ -32,6 +32,11 @@ class RegisterUserCaptchaFields
                 ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
                 ->save(fn () => null),
 
+            Schema\Str::make(CaptchaTokenExtractor::BEHAVIOR_FIELD)
+                ->visible(false)
+                ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
+                ->save(fn () => null),
+
             Schema\Str::make('captchaToken')
                 ->visible(false)
                 ->writable(fn (User $user, Context $context) => $this->shouldValidate($context))
@@ -45,7 +50,7 @@ class RegisterUserCaptchaFields
 
                             $result = CaptchaTokenExtractor::honeypotValue($body) !== ''
                                 ? $this->verifier->rejectHoneypot('signup', $request)
-                                : $this->verifier->verify(is_string($value) ? $value : '', 'signup', $request);
+                                : $this->verifier->verify(is_string($value) ? $value : '', 'signup', $request, CaptchaTokenExtractor::behaviorValue($body));
 
                             if (! $result->ok) {
                                 $fail($this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'));

@@ -116,11 +116,15 @@ class RiskTracker
         return 'powcaptcha:' . substr(hash('sha256', $this->settings->secret()), 0, 8) . ':';
     }
 
+    /** Keyed hash of the network bucket (never reversible to the IP). */
+    public function ipHash(string $ip, int $length = 24): string
+    {
+        return substr(hash_hmac('sha256', Ip::bucket($ip), $this->settings->secret()), 0, $length);
+    }
+
     private function ipKey(string $type, string $ip): string
     {
-        $hash = substr(hash_hmac('sha256', Ip::bucket($ip), $this->settings->secret()), 0, 24);
-
-        return $this->instancePrefix() . 'risk:' . $type . ':' . $hash;
+        return $this->instancePrefix() . 'risk:' . $type . ':' . $this->ipHash($ip);
     }
 
     private function globalKey(): string

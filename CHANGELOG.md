@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.10.0
+
+### Fixed
+- **Critical:** the compiled `js/dist/forum.js` was still the 3.8.x solver (hex zeros, difficulty capped at 8), while the server sends difficulties in bits (12-24). Every challenge was rejected as "unavailable". The solver and the challenge sanity check now work in bits.
+- Admin: the difficulty select only offered levels 1-3 and defaulted to 2 (server default is 3); levels 4-5 added.
+- Removed the unused `IpDetector` (it trusted spoofable proxy headers) and the stale source maps.
+
+### Added
+- **Registration limit per IP**: max 2 per rolling 24 h (configurable, 0 = off). Persistent table `powcaptcha_signups` (keyed hash only, purged after 48 h). Run `php flarum migrate`.
+- **Login / password-reset / API-token / sign-up attempt limits** per IP with lockout (login 10 per 10 min -> 15 min; reset 3 per hour -> 1 h; sign-up attempts 10 per 10 min -> 15 min).
+- **Behaviour checks**: header heuristics (missing or bot User-Agent, missing Accept-Language, cross-site Origin / Sec-Fetch-Site) and client interaction summary (trusted pointer / key / focus events, time on page). Strong signals reject, weak ones raise the adaptive difficulty. Time trap now on login (1 s) and reset (2 s), sign-up 3 s.
+- New log reasons: `rate_limited`, `signup_limit`, `suspicious`.
+
 ## 3.9.0
 
 ### Changed
