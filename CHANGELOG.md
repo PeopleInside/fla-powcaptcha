@@ -7,7 +7,10 @@
 - The age limit is enforced on every log write and also when the admin opens the log, so a quiet site (no new events) does not keep old rows - and IP addresses, if recording is enabled - indefinitely.
 - The log panel shows the configured number of days.
 
+- **Privacy notice under the CAPTCHA** (login, sign-up, password reset), on by default: a *Privacy* button opens a short popover explaining that the check runs in the browser without cookies or third-party services and which technical data is processed. The text adapts to the admin settings (behaviour checks, IP logging, retention days). New settings: *Show a privacy notice under the CAPTCHA* (`privacy_notice`, default on) and *Privacy policy link* (`privacy_url`, optional; when set, the popover links to it). Only `http(s)://` addresses and site paths (`/privacy`) are accepted; anything else is dropped server-side. The popover is a real button: it opens with tap, Enter or Space, closes with Esc, an outside click or when focus leaves, and has `aria-expanded` / `aria-controls`. Texts are in the language files (EN, IT), so they can be reworded with a language pack.
+
 ### Notes
+- `js/dist/forum.js` was patched directly as well (no `js/src` in the archive).
 - No migration needed: existing installations get the new defaults automatically (on, 30 days). Entries older than 30 days disappear the first time the log is written or opened after the update; if you want to keep them longer, raise the number of days (or turn the option off) beforehand.
 - `js/dist/admin.js` was patched directly (the `js/src` folder mentioned in 3.10.1 is not in the archive). Mirror the change in `js/src` if you rebuild from source.
 

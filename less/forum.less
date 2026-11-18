@@ -56,6 +56,65 @@
         color: inherit;
     }
 
+    // ── Privacy notice ─────────────────────────────────────────────────
+    // A button (works with touch, keyboard and screen readers) that opens a small
+    // popover ABOVE itself, so it never resizes or gets clipped by the modal.
+    &-privacy {
+        position: relative;
+        display: inline-block;
+        font-size: 12px;
+    }
+
+    &-privacyToggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 24px;
+        padding: 0 2px;
+        border: 0;
+        background: none;
+        color: var(--muted-color, #888);
+        font: inherit;
+        text-decoration: underline;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--text-color, inherit);
+        }
+    }
+
+    &-privacyTip {
+        position: absolute;
+        z-index: 10;
+        bottom: calc(100% + 6px);
+        left: 0;
+        box-sizing: border-box;
+        width: 22rem;
+        max-width: calc(100vw - 3rem);
+        padding: 10px 12px;
+        border: 1px solid var(--control-bg, #ccc);
+        border-radius: var(--border-radius, 4px);
+        background: var(--body-bg, #fff);
+        color: var(--text-color, #222);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+        font-size: 12px;
+        line-height: 1.45;
+
+        p {
+            margin: 0 0 6px;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        a {
+            color: var(--link-color, var(--primary-color, #2563eb));
+            text-decoration: underline;
+        }
+    }
+
     // Respect users who ask for less motion.
     @media (prefers-reduced-motion: reduce) {
         * {

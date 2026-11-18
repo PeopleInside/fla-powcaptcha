@@ -95,6 +95,8 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Log entries to keep (per outcome) | 100 | How many passed and how many failed checks are kept (10–1000); older rows are pruned automatically, also right after you lower the value |
 | Also delete log entries older than a number of days | **on** | Deletes entries older than the number of days below, even when the log has not reached its size limit. Runs on every write and whenever the admin opens the log |
 | Delete log entries older than (days) | 30 | Retention in days (1–365). Raise it to look further back; lower it to store less personal data |
+| Show a privacy notice under the CAPTCHA | **on** | Small *Privacy* button under the CAPTCHA that opens a short explanation (no cookies, no third parties, what is processed). The text adapts to your settings: behaviour checks, IP logging and retention days. It does not replace your privacy policy |
+| Privacy policy link (optional) | empty | Absolute `https://` address or a site path such as `/privacy`; shown as a link inside the notice. Anything else (`javascript:`, `data:`, `//host`…) is ignored. Edit the wording with a language pack / Linguist (keys `peopleinside-powcaptcha.forum.privacy.*`) |
 | Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x

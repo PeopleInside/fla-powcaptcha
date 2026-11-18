@@ -36,6 +36,10 @@ peopleinside-powcaptcha:
       log_max_age_days_help: "Usata quando l'opzione qui sopra è attiva. Intervallo consentito 1-365, predefinito 30. Imposta un valore più alto se vuoi poter guardare più indietro nel tempo; con la registrazione degli IP attiva, un valore più basso significa meno dati personali memorizzati."
       log_ip_label: "Registra e visualizza gli indirizzi IP nei log (attenzione: GDPR)"
       log_ip_help: "ATTENZIONE: l'indirizzo IP è un dato personale ai sensi del GDPR. Attivando questa opzione diventi tu, come titolare del trattamento, responsabile di avere una base giuridica valida (ad es. il legittimo interesse per la sicurezza), di indicare il trattamento nell'informativa privacy, di limitarne la conservazione e di rispondere alle richieste degli interessati. Un uso non conforme può costituire una violazione del GDPR e comportare sanzioni. Gli IP vengono conservati solo finché la voce resta tra gli eventi più recenti conservati (vedi 'Voci del registro da conservare') e non supera il numero di giorni impostato, oppure fino allo svuotamento del registro. Disattivata per impostazione predefinita: se non ti serve, lasciala spenta. Non è consulenza legale; in caso di dubbi rivolgiti a un professionista."
+      privacy_notice_label: "Mostra un'informativa privacy sotto il CAPTCHA"
+      privacy_notice_help: "Attiva di default. Mostra sotto il CAPTCHA un piccolo link \"Privacy\" che apre una breve spiegazione di cosa tratta la verifica. Il testo si adatta alle tue impostazioni (controlli comportamentali, registrazione IP, conservazione). Non sostituisce la tua informativa privacy."
+      privacy_url_label: "Link alla privacy policy (facoltativo)"
+      privacy_url_help: "Indirizzo completo (https://...) oppure un percorso del tuo sito (/privacy). Se impostato, l'informativa include un link. Lascia vuoto per mostrarla senza link. Altri tipi di indirizzo vengono ignorati."
     logs:
       title: Ultimi eventi CAPTCHA
       help: "Si conservano le ultime {count} verifiche riuscite e {count} fallite; le più vecchie vengono eliminate automaticamente. Gli indirizzi IP vengono memorizzati e visualizzati solo se la relativa opzione è stata abilitata nelle impostazioni."
@@ -87,6 +91,15 @@ peopleinside-powcaptcha:
     error: Verifica di sicurezza non riuscita. Riprova.
     rate_limited: "Troppi tentativi. Riprova tra {seconds} secondi."
     retry: Riprova
+    privacy:
+      toggle: Privacy
+      title: Informazioni sulla privacy della verifica di sicurezza
+      intro: "Questa verifica di sicurezza viene eseguita nel tuo browser: non usa cookie né servizi di terze parti."
+      data: "Per prevenire abusi trattiamo solo dati tecnici: un identificativo con hash della tua rete, conservato per poco tempo, e l'orario e l'esito della verifica."
+      behavior: "Osserviamo anche alcune informazioni di base del browser e se hai interagito con la pagina (ad esempio attività del puntatore o della tastiera e da quanto tempo la pagina è aperta). Serve solo a distinguere le persone dai bot e non viene memorizzato."
+      ip: "Il tuo indirizzo IP viene registrato nel registro di sicurezza."
+      ip_days: "Il tuo indirizzo IP viene registrato nel registro di sicurezza per un massimo di {days} giorni."
+      policy: Leggi l'informativa privacy
     challenge_not_ready: La verifica di sicurezza non è ancora completata. Riprova.
 
   validation:

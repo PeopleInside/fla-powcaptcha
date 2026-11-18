@@ -147,6 +147,46 @@ class PowSettings
         return max(self::LOG_MAX_AGE_MIN, min(self::LOG_MAX_AGE_MAX, (int) $raw));
     }
 
+    /** Whether the short privacy notice is shown under the CAPTCHA. On by default. */
+    public function privacyNotice(): bool
+    {
+        return $this->flag('privacy_notice', true);
+    }
+
+    /** Optional link to the site's privacy policy (empty = no link). Always sanitised. */
+    public function privacyUrl(): string
+    {
+        return self::sanitizeUrl($this->settings->get(self::PREFIX . 'privacy_url'));
+    }
+
+    /**
+     * Accepts only absolute http(s) URLs or site-relative paths ("/privacy"); anything
+     * else (javascript:, data:, protocol-relative //host, garbage) becomes ''. The value
+     * ends up in an href visible to every visitor, so it is never trusted as stored.
+     */
+    public static function sanitizeUrl(mixed $value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $url = trim($value);
+
+        if ($url === '' || strlen($url) > 2048 || preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
+            return '';
+        }
+
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//') && ! str_contains($url, '\\')) {
+            return $url;
+        }
+
+        if (preg_match('#^https?://#i', $url) === 1 && filter_var($url, FILTER_VALIDATE_URL) !== false) {
+            return $url;
+        }
+
+        return '';
+    }
+
     public function behaviorChecks(): bool
     {
         return $this->flag('behavior_checks', true);
