@@ -11,13 +11,14 @@ use Psr\Log\LoggerInterface;
  *
  * Privacy by design: only the time, the form, the outcome, a technical reason and
  * the difficulty are stored. No IP address (not even truncated or hashed), no user
- * agent, no username or e-mail. It keeps the last KEEP events per outcome and
- * deletes older rows automatically; admins can also clear it manually.
+ * agent, no username or e-mail. It keeps the last N events per outcome (N is the
+ * `log_keep` setting, default 100) and deletes older rows automatically; admins can also clear it manually.
  */
 class EventLogger
 {
     public const TABLE = 'powcaptcha_logs';
-    public const KEEP = 30;
+    /** Default only; the effective value comes from PowSettings::logKeep(). */
+    public const KEEP = PowSettings::LOG_KEEP_DEFAULT;
     public const MAX_WRITES_PER_MINUTE = 40;
 
     private const ACTIONS = ['login', 'signup', 'forgot', 'token'];
@@ -78,7 +79,11 @@ class EventLogger
 
             $this->db->table(self::TABLE)->insert($row);
 
-            $this->prune($result);
+            // Prune both outcomes: lowering the limit must also shrink the outcome
+            // that is not the one being written right now.
+            $keep = $this->settings->logKeep();
+            $this->prune('ok', $keep);
+            $this->prune('fail', $keep);
         } catch (\Throwable $e) {
             // Logging must never break login or registration.
             $this->logger->warning('[fla-powcaptcha] Could not write the event log: ' . $e->getMessage());
@@ -88,7 +93,7 @@ class EventLogger
     /** @return list<array{id:int,ts:int,action:string,result:string,reason:string,difficulty:int,ip:?string}> */
     public function latest(): array
     {
-        $rows = $this->db->table(self::TABLE)->orderByDesc('id')->limit(self::KEEP * 2)->get();
+        $rows = $this->db->table(self::TABLE)->orderByDesc('id')->limit($this->keep() * 2)->get();
         $out = [];
         $showIp = $this->settings->logIp();
 
@@ -127,17 +132,23 @@ class EventLogger
         return $has;
     }
 
+    /** Entries kept per outcome (configurable in the admin settings). */
+    public function keep(): int
+    {
+        return $this->settings->logKeep();
+    }
+
     public function clear(): int
     {
         return (int) $this->db->table(self::TABLE)->delete();
     }
 
-    private function prune(string $result): void
+    private function prune(string $result, int $keep): void
     {
         $cutoff = $this->db->table(self::TABLE)
             ->where('result', $result)
             ->orderByDesc('id')
-            ->offset(self::KEEP)
+            ->offset($keep)
             ->limit(1)
             ->value('id');
 

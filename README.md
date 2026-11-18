@@ -23,7 +23,7 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 🔁 **Atomic single use** – a token can be consumed only once, even with parallel requests (uses a cache lock when available)
 - 🪤 **Honeypot and time trap** – invisible traps for form-filling bots (sign-up must take at least 2 s)
 - 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
-- 📋 **Event log** in the admin panel – last 30 passed / 30 failed checks, self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
+- 📋 **Event log** in the admin panel – last 100 passed / 100 failed checks by default (configurable, 10–1000), self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
 - 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
 
@@ -91,7 +91,8 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Difficulty level | 3 – Strong | Measured in leading zero bits (each bit doubles the work): level 1 = 12 bits (~4k hashes), 2 = 16 (~65k), 3 = 20 (~1M), 4 = 22 (~4M), 5 = 24 (~16.8M). Approximate time on a recent PC: instant / ≈ 0.1 s / ≈ 1–3 s / ≈ 4–12 s / ≈ 15–50 s (phones are 3–6× slower). Levels 4–5 are meant for use while under attack |
 | Adaptive difficulty | on | Raises the difficulty for suspicious networks (hard ceiling: 6 zeros) |
 | Protect the API login endpoint | on for new installs, **off for existing ones** | Requires a CAPTCHA token on direct `POST /api/token` calls |
-| Keep an event log | on | Last 30 passed + 30 failed checks |
+| Keep an event log | on | Stores recent passed and failed checks |
+| Log entries to keep (per outcome) | 100 | How many passed and how many failed checks are kept (10–1000); older rows are pruned automatically, also right after you lower the value |
 | Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x

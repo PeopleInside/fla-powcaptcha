@@ -25,6 +25,10 @@ class PowSettings
     public const MAX_LEVEL = 5;
     public const DEFAULT_LEVEL = 3;
 
+    public const LOG_KEEP_DEFAULT = 100;
+    public const LOG_KEEP_MIN = 10;
+    public const LOG_KEEP_MAX = 1000;
+
     /** Absolute ceiling for the ADAPTIVE bump, in bits (24 bits = ~16.7M hashes). */
     public const HARD_CAP = 24;
 
@@ -100,6 +104,21 @@ class PowSettings
     public function logIp(): bool
     {
         return $this->flag('log_ip', false);
+    }
+
+    /**
+     * How many events to keep in the admin log PER OUTCOME (passed / failed), so the
+     * table holds at most twice this number. Default 100, clamped to 10-1000.
+     */
+    public function logKeep(): int
+    {
+        $raw = $this->settings->get(self::PREFIX . 'log_keep');
+
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return self::LOG_KEEP_DEFAULT;
+        }
+
+        return max(self::LOG_KEEP_MIN, min(self::LOG_KEEP_MAX, (int) $raw));
     }
 
     public function behaviorChecks(): bool

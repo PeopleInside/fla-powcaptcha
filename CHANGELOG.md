@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.10.1
+
+### Added
+- **Configurable event-log size**: new admin setting *Log entries to keep (per outcome)* (`peopleinside-powcaptcha.log_keep`). The default is now **100** passed + **100** failed checks (was a fixed 30 + 30). Allowed range 10-1000; invalid or empty values fall back to 100. Pruning now trims both outcomes on every write, so lowering the value shrinks the log right away.
+- The log help text in the admin panel shows the configured number.
+
+### Changed
+- The frontend source is now part of the archive: `js/src` (TypeScript), `js/webpack.config.js` (with `devtool: 'source-map'`) and `js/tsconfig.json`. `npm ci && npm run build` also emits `js/dist/*.js.map` - commit them together with the dist files.
+- The build id exposed as `flarum.extensions['peopleinside-fla-powcaptcha'].build` is now the extension version (3.10.1) and is added by the webpack config instead of a manual patch.
+
+### Notes
+- `js/src` was reconstructed from the shipped bundles (including the 3.9.0 / 3.10.0 hand patches). Run `npm ci && npm run build` once and diff `js/dist` before relying on it; the source maps could not be generated in the environment where this release was prepared.
+- No migration needed. IP addresses already stored stay subject to the new limit.
+
 ## 3.10.0
 
 ### Fixed
