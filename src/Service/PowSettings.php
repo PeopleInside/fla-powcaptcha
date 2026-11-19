@@ -44,24 +44,6 @@ class PowSettings
     /** Bits added by each adaptive step (4 bits = one old hex zero = 16x the work). */
     public const BITS_PER_STEP = 4;
 
-    /**
-     * Extension version, read from the `VERSION` file at the extension root (the single
-     * place where it is defined). Cached for the request; 'unknown' if unreadable.
-     */
-    public static function version(): string
-    {
-        static $version = null;
-
-        if ($version === null) {
-            $raw = @file_get_contents(dirname(__DIR__, 2) . '/VERSION');
-            $raw = is_string($raw) ? trim($raw) : '';
-
-            $version = preg_match('/^\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/', $raw) === 1 ? $raw : 'unknown';
-        }
-
-        return $version;
-    }
-
     public function __construct(private readonly SettingsRepositoryInterface $settings)
     {
     }

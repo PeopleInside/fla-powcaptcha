@@ -13,7 +13,7 @@
 - The cache key prefix (a SHA-256 of the secret) is computed once per request instead of several times per check.
 
 ### Changed
-- **Single source for the version**: the version is now defined only in the `VERSION` file. PHP reads it at runtime (dashboard widget, API); `node scripts/sync-version.js` (or `npm run version:sync` in `js/`) copies it to `js/package.json` and the build id of `js/dist/*.js`, and `--check` verifies everything, including that the newest CHANGELOG section matches. Release routine: edit `VERSION`, add the CHANGELOG heading, run the script.
+- **No version written in the code**: the dashboard widget shows the version Composer installed, exactly as displayed in the extension settings (e.g. `3.10.3.x-dev` when installed with `composer require peopleinside/fla-powcaptcha:3.10.3.x-dev`). It is read at runtime through Flarum's extension manager (Composer's installed packages as a fallback); if it cannot be determined the badge is simply hidden. The `VERSION` file, `scripts/sync-version.js`, the `version` field in `js/package.json` and the `build` id in `js/dist/*.js` were removed, so a release only needs the new `## <version>` heading in this file.
 - `js/dist/admin.js`: removed the unreachable `app.extensionData` fallback (Flarum 1.x API); the settings are registered through `app.registry` only, with an early return if it is missing.
 - README: clarified that the PHP floor (8.1) is the extension's own minimum, while Flarum 2.x requires 8.3 through `flarum/core`.
 
