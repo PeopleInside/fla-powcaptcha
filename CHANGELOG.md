@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.10.4
+
+### Fixed
+- **Fatal error on the forum and admin (`Cannot read properties of undefined (reading 'extend')`)**: 3.10.3 removed the `build` id from `js/dist/*.js`, and with it the footer that sets `module.exports`. Flarum compiles every extension as `var module = {}; <bundle>; flarum.extensions[id] = module.exports;` and then calls `.extend` on each one, so an undefined `module.exports` crashed the whole frontend. The footer `"object"==typeof module&&module&&(module.exports=module.exports||{});` is back in both bundles and in `js/webpack.config.js` (no longer tied to a version number).
+- Removed the stale `js/src/forum.js` and `js/src/admin.js` stubs (they imported a non-existent `flarum/frontend/app` and duplicated `src/forum/index.ts` / `src/admin/index.ts`).
+
 ## 3.10.3
 
 ### Added

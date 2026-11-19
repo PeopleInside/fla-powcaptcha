@@ -1,19 +1,17 @@
 const config = require('flarum-webpack-config')();
 const webpack = require('webpack');
-const { version } = require('./package.json');
 
-// Source maps: emit js/dist/*.js.map next to the bundles so the original TypeScript
-// can be recovered from the shipped files (commit the .map files with the dist).
-config.devtool = 'source-map';
-
-// Flarum registers the extension from `module.exports`; keep it set and expose the
-// build id (flarum.extensions['peopleinside-fla-powcaptcha'].build).
+// Flarum compiles each extension as `var module = {}; <bundle>; flarum.extensions[id] = module.exports;`
+// and then calls `extension.extend` on every registered extension while booting.
+// If the bundle never sets `module.exports`, that value is `undefined` and the whole
+// forum dies with "Cannot read properties of undefined (reading 'extend')".
+// Keep this footer: it guarantees `module.exports` is always an object.
 config.plugins = [
   ...(config.plugins || []),
   new webpack.BannerPlugin({
     raw: true,
     footer: true,
-    banner: `"object"==typeof module&&module&&(module.exports=module.exports||{},module.exports.build=${JSON.stringify(version)});`,
+    banner: '"object"==typeof module&&module&&(module.exports=module.exports||{});',
   }),
 ];
 
