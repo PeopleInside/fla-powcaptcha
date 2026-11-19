@@ -15,6 +15,7 @@ class PowSettings
 {
     public const PREFIX = 'peopleinside-powcaptcha.';
 
+
     /**
      * Difficulty is expressed in leading zero BITS of the SHA-256 hash (2^n hashes on
      * average). Levels 1-3 are exactly the old 3/4/5 hex zeros (12/16/20 bits); levels
@@ -42,6 +43,24 @@ class PowSettings
 
     /** Bits added by each adaptive step (4 bits = one old hex zero = 16x the work). */
     public const BITS_PER_STEP = 4;
+
+    /**
+     * Extension version, read from the `VERSION` file at the extension root (the single
+     * place where it is defined). Cached for the request; 'unknown' if unreadable.
+     */
+    public static function version(): string
+    {
+        static $version = null;
+
+        if ($version === null) {
+            $raw = @file_get_contents(dirname(__DIR__, 2) . '/VERSION');
+            $raw = is_string($raw) ? trim($raw) : '';
+
+            $version = preg_match('/^\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$/', $raw) === 1 ? $raw : 'unknown';
+        }
+
+        return $version;
+    }
 
     public function __construct(private readonly SettingsRepositoryInterface $settings)
     {
@@ -104,6 +123,12 @@ class PowSettings
     public function logEnabled(): bool
     {
         return $this->flag('log_enabled', true);
+    }
+
+    /** Whether the admin dashboard widget (and its anonymous daily counters) is active. On by default. */
+    public function dashboardWidget(): bool
+    {
+        return $this->flag('dashboard_widget', true);
     }
 
     public function logIp(): bool

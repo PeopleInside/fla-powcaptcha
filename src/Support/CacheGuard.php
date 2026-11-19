@@ -36,6 +36,12 @@ class CacheGuard
         $this->cache->put($key, $value, $ttl);
     }
 
+    /** Subtracts $by from a counter (used to move buffered counts to the database). */
+    public function decrement(string $key, int $by = 1): void
+    {
+        $this->cache->decrement($key, $by);
+    }
+
     public function count(string $key): int
     {
         return (int) $this->cache->get($key, 0);

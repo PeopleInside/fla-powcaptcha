@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.10.3
+
+### Added
+- **Numbered log rows**: the event log in the admin panel now has a `#` column (1 = newest row of the current view; the numbering restarts when you switch the *All / Passed / Failed* filter). A counter line above the table shows how many *Passed* and *Failed* entries are stored compared with the *Log entries to keep* limit (e.g. `Failed: 87 / 100`), and is highlighted when the limit is reached.
+- **Dashboard widget, on by default**: the Flarum admin dashboard shows how many CAPTCHA checks were **blocked** and **passed** today and in the last 7 days, the extension version, and an *Open the log* button that jumps to the log section of the extension settings. New setting *Show the statistics widget on the admin dashboard* (`peopleinside-powcaptcha.dashboard_widget`, default on); turning it off hides the widget and stops the counting.
+- The widget reads anonymous **daily counters** (new table `powcaptcha_stats`: a UTC date and two numbers, no IP or personal data, rows older than 90 days deleted automatically). They are independent from the event log, so they stay accurate even when the log is capped or disabled. New admin-only endpoint `GET /api/powcaptcha/stats`.
+
+### Performance
+- **Statistics are buffered in the cache**: a check only increments an atomic cache counter; the counts are written to the database in a single query at most every 30 seconds (and when the admin opens the widget). A flood of requests therefore causes no extra database writes for the statistics. If the cache is unavailable the count is written directly, so nothing is lost.
+- **Log pruning is throttled**: trimming the log (3-4 queries) used to run on every log write; it now runs at most every 30 seconds, and always when the admin opens the log. Lowering *Log entries to keep* takes effect within 30 seconds (immediately when you open the log); between prunes the table may exceed the limit by a few rows.
+- The cache key prefix (a SHA-256 of the secret) is computed once per request instead of several times per check.
+
+### Changed
+- **Single source for the version**: the version is now defined only in the `VERSION` file. PHP reads it at runtime (dashboard widget, API); `node scripts/sync-version.js` (or `npm run version:sync` in `js/`) copies it to `js/package.json` and the build id of `js/dist/*.js`, and `--check` verifies everything, including that the newest CHANGELOG section matches. Release routine: edit `VERSION`, add the CHANGELOG heading, run the script.
+- `js/dist/admin.js`: removed the unreachable `app.extensionData` fallback (Flarum 1.x API); the settings are registered through `app.registry` only, with an early return if it is missing.
+- README: clarified that the PHP floor (8.1) is the extension's own minimum, while Flarum 2.x requires 8.3 through `flarum/core`.
+
+### Notes
+- **Run `php flarum migrate`** to create the `powcaptcha_stats` table. Until then the widget shows a hint and everything else keeps working.
+- Counting starts at the update: past events are not back-filled.
+- Days are UTC; "last 7 days" is a rolling window that includes today.
+- `js/dist/admin.js` was patched directly (no `js/src` in the archive). Mirror the changes in `js/src` if you rebuild from source.
+- PHP was not executed in the environment where this release was prepared (no PHP available): please run `php -l` / your test suite before publishing.
+
 ## 3.10.2
 
 ### Added

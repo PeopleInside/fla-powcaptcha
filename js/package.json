@@ -1,6 +1,6 @@
 {
     "private": true,
-    "version": "3.10.2",
+    "version": "3.10.3",
     "name": "@peopleinside/fla-powcaptcha",
     "license": "Apache-2.0",
     "devDependencies": {
@@ -25,6 +25,8 @@
     },
     "scripts": {
         "dev": "webpack --mode development --watch",
-        "build": "webpack --mode production"
+        "build": "webpack --mode production",
+        "version:sync": "node ../scripts/sync-version.js",
+        "version:check": "node ../scripts/sync-version.js --check"
     }
 }
