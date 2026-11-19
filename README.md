@@ -24,6 +24,7 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 🪤 **Honeypot and time trap** – invisible traps for form-filling bots (sign-up must take at least 2 s)
 - 🛡️ **Optional protection of `/api/token`** – the public API login endpoint that bypasses the login form
 - 📋 **Event log** in the admin panel – last 100 passed / 100 failed checks by default (configurable, 10–1000) and nothing older than 30 days by default (configurable, 1–365), self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
+- 📊 **Dashboard widget** (on by default) – blocked / passed checks today and in the last 7 days, extension version and a shortcut to the log; anonymous daily counters, no personal data
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
 - 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
 
@@ -33,6 +34,8 @@ Bots must repeat the work for every single request, and the work grows automatic
 |------------|---------|
 | PHP        | ≥ 8.1   |
 | Flarum     | ^1.8 or ^2.0 |
+
+The PHP floor is the lowest version this extension's own code needs (8.1: readonly properties). Flarum 2.x itself requires PHP ≥ 8.3, and Composer enforces that through `flarum/core`, so on a 2.x forum the effective minimum is 8.3.
 
 ## Screenshot
 <img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
@@ -98,6 +101,7 @@ Go to **Admin → Extensions → PoW CAPTCHA**.
 | Show a privacy notice under the CAPTCHA | **on** | Small *Privacy* button under the CAPTCHA that opens a short explanation (no cookies, no third parties, what is processed). The text adapts to your settings: behaviour checks, IP logging and retention days. It does not replace your privacy policy |
 | Privacy link alignment | left | Left / center / right under the CAPTCHA. The popover always spans the full width of the form |
 | Privacy policy link (optional) | empty | Absolute `https://` address or a site path such as `/privacy`; shown as a link inside the notice. Anything else (`javascript:`, `data:`, `//host`…) is ignored. Edit the wording with a language pack / Linguist (keys `peopleinside-powcaptcha.forum.privacy.*`) |
+| Show the statistics widget on the admin dashboard | **on** | Widget with blocked / passed checks (today, last 7 days), version and a button to the log. Uses anonymous daily counters (table `powcaptcha_stats`, 90 days). Off = widget hidden and counting stopped |
 | Record and display IP addresses in CAPTCHA logs | **off** | Stores and shows the visitor IP in the log. **GDPR warning:** an IP is personal data; enabling this makes you responsible for a legal basis, privacy-policy disclosure and limited retention. Off by default |
 
 ### Upgrading from 3.7.x

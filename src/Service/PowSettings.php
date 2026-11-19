@@ -15,6 +15,7 @@ class PowSettings
 {
     public const PREFIX = 'peopleinside-powcaptcha.';
 
+
     /**
      * Difficulty is expressed in leading zero BITS of the SHA-256 hash (2^n hashes on
      * average). Levels 1-3 are exactly the old 3/4/5 hex zeros (12/16/20 bits); levels
@@ -104,6 +105,12 @@ class PowSettings
     public function logEnabled(): bool
     {
         return $this->flag('log_enabled', true);
+    }
+
+    /** Whether the admin dashboard widget (and its anonymous daily counters) is active. On by default. */
+    public function dashboardWidget(): bool
+    {
+        return $this->flag('dashboard_widget', true);
     }
 
     public function logIp(): bool

@@ -23,6 +23,7 @@ class EventLogger
     /** Default only; the effective value comes from PowSettings::logKeep(). */
     public const KEEP = PowSettings::LOG_KEEP_DEFAULT;
     public const MAX_WRITES_PER_MINUTE = 40;
+    public const PRUNE_INTERVAL = 30;
 
     private const ACTIONS = ['login', 'signup', 'forgot', 'token'];
     private const REASONS = [
@@ -36,12 +37,17 @@ class EventLogger
         private readonly CacheGuard $cache,
         private readonly RiskTracker $risk,
         private readonly PowSettings $settings,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly StatsTracker $stats
     ) {
     }
 
     public function record(string $action, bool $ok, string $reason, int $difficulty, ?string $ip = null): void
     {
+        // Anonymous daily counters for the dashboard widget. Independent of the event log:
+        // they keep working even if the log is disabled or capped.
+        $this->stats->hit($ok);
+
         if (! $this->settings->logEnabled()) {
             return;
         }
@@ -82,12 +88,12 @@ class EventLogger
 
             $this->db->table(self::TABLE)->insert($row);
 
-            // Prune both outcomes: lowering the limit must also shrink the outcome
-            // that is not the one being written right now.
-            $keep = $this->settings->logKeep();
-            $this->prune('ok', $keep);
-            $this->prune('fail', $keep);
-            $this->pruneOld();
+            // Pruning costs several queries, so it runs at most once every PRUNE_INTERVAL
+            // seconds instead of on every write (the table can overshoot the limit by a
+            // few rows in between; latest() trims it again whenever the admin looks).
+            if ($this->cache->hit($this->risk->instancePrefix() . 'logprune:' . intdiv(time(), self::PRUNE_INTERVAL), self::PRUNE_INTERVAL * 2) === 1) {
+                $this->pruneAll();
+            }
         } catch (\Throwable $e) {
             // Logging must never break login or registration.
             $this->logger->warning('[fla-powcaptcha] Could not write the event log: ' . $e->getMessage());
@@ -100,7 +106,7 @@ class EventLogger
         // On a quiet site nothing is written, so the age limit is also enforced when
         // the admin opens the log.
         try {
-            $this->pruneOld();
+            $this->pruneAll();
         } catch (\Throwable $e) {
             $this->logger->warning('[fla-powcaptcha] Could not prune old log entries: ' . $e->getMessage());
         }
@@ -154,6 +160,15 @@ class EventLogger
     public function maxAgeDays(): ?int
     {
         return $this->settings->logPruneByAge() ? $this->settings->logMaxAgeDays() : null;
+    }
+
+    /** Trims both outcomes to the size limit and removes entries past the age limit. */
+    private function pruneAll(): void
+    {
+        $keep = $this->settings->logKeep();
+        $this->prune('ok', $keep);
+        $this->prune('fail', $keep);
+        $this->pruneOld();
     }
 
     /** Deletes entries older than the configured number of days. Returns the rows deleted. */

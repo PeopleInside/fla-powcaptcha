@@ -63,3 +63,120 @@
         color: var(--error-color, #d64545);
     }
 }
+
+// ── Numbered log rows + counters ──────────────────────────────────────────────
+.PowLogs {
+    &-counters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 6px 0 10px;
+    }
+
+    &-counter {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--control-bg, rgba(127, 127, 127, 0.15));
+
+        // Limit reached: the oldest entries are being replaced by newer ones.
+        &.is-full {
+            outline: 1px solid var(--muted-color);
+        }
+    }
+
+    &-num {
+        color: var(--muted-color);
+        text-align: right !important;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// ── Dashboard widget ──────────────────────────────────────────────────────────
+.PowStats {
+    &-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    &-title {
+        margin: 0;
+    }
+
+    &-version {
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--control-bg, rgba(127, 127, 127, 0.15));
+        color: var(--muted-color);
+    }
+
+    &-blocks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    &-block {
+        flex: 1 1 140px;
+    }
+
+    &-period {
+        margin: 0 0 6px;
+        color: var(--muted-color);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    &-cells {
+        display: flex;
+        gap: 16px;
+    }
+
+    &-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    &-number {
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &-cell--blocked &-number {
+        color: #d64545;
+    }
+
+    &-cell--passed &-number {
+        color: #1f9d55;
+    }
+
+    &-label {
+        color: var(--muted-color);
+        font-size: 12px;
+    }
+
+    &-note {
+        margin: 10px 0 0;
+        font-size: 12px;
+        color: var(--muted-color);
+
+        &--error {
+            color: var(--error-color, #d64545);
+        }
+    }
+
+    &-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 12px;
+    }
+}

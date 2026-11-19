@@ -10,6 +10,7 @@ use PeopleInside\PowCaptcha\Api\RegisterUserCaptchaFields;
 use PeopleInside\PowCaptcha\Controller\ClearLogsController;
 use PeopleInside\PowCaptcha\Controller\ListLogsController;
 use PeopleInside\PowCaptcha\Controller\PowCaptchaChallengeController;
+use PeopleInside\PowCaptcha\Controller\StatsController;
 use PeopleInside\PowCaptcha\Listener\AddPowValidatorRule;
 use PeopleInside\PowCaptcha\Listener\RecordRegistration;
 use PeopleInside\PowCaptcha\Listener\ValidateRegistrationPow;
@@ -45,6 +46,7 @@ $extenders = [
         ->default('peopleinside-powcaptcha.adaptive', true)
         ->default('peopleinside-powcaptcha.log_enabled', true)
         ->default('peopleinside-powcaptcha.log_ip', false)
+        ->default('peopleinside-powcaptcha.dashboard_widget', true)
         ->default('peopleinside-powcaptcha.log_keep', 100)
         ->default('peopleinside-powcaptcha.log_prune_age', true)
         ->default('peopleinside-powcaptcha.log_max_age_days', 30)
@@ -74,6 +76,7 @@ $extenders = [
     (new Extend\Routes('api'))
         ->get('/powcaptcha/challenge', 'powcaptcha.challenge', PowCaptchaChallengeController::class)
         ->get('/powcaptcha/logs', 'powcaptcha.logs.index', ListLogsController::class)
+        ->get('/powcaptcha/stats', 'powcaptcha.stats', StatsController::class)
         ->delete('/powcaptcha/logs', 'powcaptcha.logs.clear', ClearLogsController::class),
 
     // ── Middleware ─────────────────────────────────────────────────────

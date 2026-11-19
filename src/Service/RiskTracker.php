@@ -20,6 +20,8 @@ class RiskTracker
     public const GLOBAL_WINDOW = 300;
     public const GLOBAL_FAIL_THRESHOLD = 60;
 
+    private ?string $prefix = null;
+
     public function __construct(
         private readonly CacheGuard $cache,
         private readonly PowSettings $settings,
@@ -113,7 +115,8 @@ class RiskTracker
 
     public function instancePrefix(): string
     {
-        return 'powcaptcha:' . substr(hash('sha256', $this->settings->secret()), 0, 8) . ':';
+        // Computed once per request: it is used several times on every check.
+        return $this->prefix ??= 'powcaptcha:' . substr(hash('sha256', $this->settings->secret()), 0, 8) . ':';
     }
 
     /** Keyed hash of the network bucket (never reversible to the IP). */
