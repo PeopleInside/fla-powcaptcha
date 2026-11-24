@@ -19,7 +19,7 @@ final class CaptchaTokenExtractor
     public const BEHAVIOR_FIELD = 'pow_behavior';
 
     /**
-     * Extract the PoW token from registration payloads across Flarum 1.x and 2.x.
+     * Extract the PoW token from registration payloads from the different payload shapes Flarum 2.x uses.
      */
     public static function fromRegistrationData(array $data): string
     {

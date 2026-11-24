@@ -5,9 +5,8 @@ namespace PeopleInside\PowCaptcha\Support;
 /**
  * Request-scoped holder for the client IP and the header-based suspicion score.
  *
- * Flarum's login / forgot-password validators (and the Flarum 1.x user "Saving"
- * event) do not receive the HTTP request, so a tiny middleware stores what the
- * verifier needs here.
+ * Flarum's login / forgot-password validators do not receive the HTTP request,
+ * so a tiny middleware stores what the verifier needs here.
  */
 final class ClientContext
 {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0.0
+
+### Removed
+- **Flarum 1.x support.** The extension now requires `flarum/core ^2.0` (and PHP ≥ 8.3, which Flarum 2.x already requires). Forums still on Flarum 1.8 must stay on 2.3 (`composer require peopleinside/fla-powcaptcha:2.3`).
+- Deleted `Listener\ValidateRegistrationPow` (the Flarum 1.x `User\Event\Saving` check) and the `class_exists` switch in `extend.php`: the `captchaToken` field and the missing-token middleware are now always registered through the 2.x `ApiResource` extender.
+- Removed the `method_exists(RequestUtil::class, 'isInternal')` guard in `ProtectTokenEndpoint` (the method always exists on 2.x) and the leftover 1.x wording in comments.
+
+### Fixed
+- **`Array to string conversion` warning in `Flarum\Foundation\ValidationException` (line 20)**: when a CAPTCHA check failed, the extension threw `ValidationException` with the message wrapped in an array (`'captchaToken' => [$message]`), but Flarum expects a single string per field (`'captchaToken' => $message`). Every blocked sign-up or token request therefore wrote a PHP warning to the error log (reported in flarum/framework#5593; not related to PHP 8.6). Fixed in `ValidateRegistrationPow`, `ProtectTokenEndpoint`, `RecordMissingSignupToken` and the three throws in `PowTokenVerifier`.
+
 ## 3.10.4
 
 ### Fixed

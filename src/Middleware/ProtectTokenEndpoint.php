@@ -39,7 +39,6 @@ class ProtectTokenEndpoint implements MiddlewareInterface
         if ($request->getAttribute('routeName') !== 'token'
             || $request->getMethod() !== 'POST'
             || ! $this->settings->enabledFor('token')
-            || ! method_exists(RequestUtil::class, 'isInternal')
             || RequestUtil::isInternal($request)
         ) {
             return $handler->handle($request);
@@ -59,7 +58,7 @@ class ProtectTokenEndpoint implements MiddlewareInterface
 
         if (! $result->ok) {
             throw new ValidationException([
-                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')],
+                'captchaToken' => $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'),
             ]);
         }
 

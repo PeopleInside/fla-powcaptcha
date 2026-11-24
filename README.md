@@ -26,16 +26,16 @@ Bots must repeat the work for every single request, and the work grows automatic
 - 📋 **Event log** in the admin panel – last 100 passed / 100 failed checks by default (configurable, 10–1000) and nothing older than 30 days by default (configurable, 1–365), self-pruning, with a *Clear log* button; **IP addresses are recorded only if you enable the (off by default) option**
 - 📊 **Dashboard widget** (on by default) – blocked / passed checks today and in the last 7 days, extension version and a shortcut to the log; anonymous daily counters, no personal data
 - ♿ **Accessible** – polite live-region announcements, no visual puzzle, no dragging, honeypot hidden from assistive technology
-- 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x (the PHP side also keeps a Flarum 1.x code path, but the shipped JavaScript is built for 2.x)
+- 🌍 **Italian & English**, 🌓 dark / light mode, ✅ Flarum 2.x
 
 ## Requirements
 
 | Dependency | Version |
 |------------|---------|
-| PHP        | ≥ 8.1   |
-| Flarum     | ^1.8 or ^2.0 |
+| PHP        | ≥ 8.3   |
+| Flarum     | ^2.0    |
 
-The PHP floor is the lowest version this extension's own code needs (8.1: readonly properties). Flarum 2.x itself requires PHP ≥ 8.3, and Composer enforces that through `flarum/core`, so on a 2.x forum the effective minimum is 8.3.
+Flarum 2.x itself requires PHP ≥ 8.3, so that is the minimum for this extension too. Flarum 1.x is no longer supported (see below).
 
 ## Screenshot
 <img width="1642" height="720" alt="Screenshot 2026-05-14 205357" src="https://github.com/user-attachments/assets/1576655b-0d83-46a8-b35b-0cecee923faf" />
@@ -55,9 +55,9 @@ composer require peopleinside/fla-powcaptcha
 ```
 
 <details>
-<summary>For Flarum 1.8 use the version 2.3</summary>
+<summary>Still on Flarum 1.8? Use version 2.3</summary>
 
-The future will be Flarum 2.0 that support the latest release.
+Flarum 1.x is no longer supported by the current releases (they require `flarum/core ^2.0`). On Flarum 1.8 stay on the last compatible version.
 
 Install with 
 

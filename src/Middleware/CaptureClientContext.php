@@ -13,7 +13,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Makes the client IP and the header-based behaviour score available to code that
- * does not receive the HTTP request (Flarum validators and the 1.x "Saving" event).
+ * does not receive the HTTP request (Flarum validators).
  */
 class CaptureClientContext implements MiddlewareInterface
 {

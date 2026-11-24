@@ -54,7 +54,7 @@ class RecordMissingSignupToken implements MiddlewareInterface
             : $this->verifier->verify('', 'signup', $request);
 
         throw new ValidationException([
-            'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')],
+            'captchaToken' => $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'),
         ]);
     }
 
