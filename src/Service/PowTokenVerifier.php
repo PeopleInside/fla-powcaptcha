@@ -125,7 +125,7 @@ class PowTokenVerifier
             $this->logger->record($action, false, 'signup_limit', 0, $ip);
 
             throw new ValidationException([
-                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.signup_limit')],
+                'captchaToken' => $this->translator->trans('peopleinside-powcaptcha.validation.signup_limit'),
             ]);
         }
 
@@ -133,7 +133,7 @@ class PowTokenVerifier
             $this->logger->record($action, false, 'rate_limited', 0, $ip);
 
             throw new ValidationException([
-                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.rate_limited')],
+                'captchaToken' => $this->translator->trans('peopleinside-powcaptcha.validation.rate_limited'),
             ]);
         }
 
@@ -147,7 +147,7 @@ class PowTokenVerifier
             $this->finish(new VerifyResult(false, 'suspicious'), $action, $ip);
 
             throw new ValidationException([
-                'captchaToken' => [$this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha')],
+                'captchaToken' => $this->translator->trans('peopleinside-powcaptcha.validation.pow_captcha'),
             ]);
         }
 
